@@ -9,7 +9,7 @@ read_file_builtin() {
     elif (( $# )); then
         local -r input="$*"
     else
-        error "$ERROR_ARG_NOT_PROVIDED: $__error_no_file"
+        error "$ERROR_ARG_REQUIRED: $__error_no_file"
     fi
     debug "$(declare -p input)"
 
@@ -30,7 +30,7 @@ read_file_preserve_newlines() {
     elif (( $# )); then
         local -r input="$*"
     else
-        error "$ERROR_ARG_NOT_PROVIDED: $__error_no_file"
+        error "$ERROR_ARG_REQUIRED: $__error_no_file"
     fi
     debug "$(declare -p input)"
 
@@ -52,7 +52,7 @@ parse_file_extension() {
     elif (( $# )); then
         local -r input="$*"
     else
-        error "$ERROR_ARG_NOT_PROVIDED: $__error_no_file"
+        error "$ERROR_ARG_REQUIRED: $__error_no_file"
     fi
     debug "$(declare -p input)"
 
@@ -71,9 +71,9 @@ parse_file_extension() {
     printf "%s" "$output"
 }
 
-if [ "${__lib_opt_bash_utils_logging_sourced:-}" != "true" ]; then
-    declare -r lib_opt_bash_utils_logging="hack/lib/opt-bash-utils-logging.sh"
-    [ -f "$lib_opt_bash_utils_logging" ] || { printf '%s\n' "failed to find file: $lib_opt_bash_utils_logging" >&2; exit 1; }
-    # shellcheck source=opt-bash-utils-logging.sh
-    . "$lib_opt_bash_utils_logging"
+if [ "${__lib_vendor_bash_utils_logging_sourced:-}" != "true" ]; then
+    declare -r lib_vendor_bash_utils_logging="hack/lib/vendor-bash-utils-logging.sh"
+    [ -f "$lib_vendor_bash_utils_logging" ] || { printf '%s\n' "failed to find file: $lib_opt_bash_utils_logging" >&2; exit 1; }
+    # shellcheck source=../../../lib/vendor-bash-utils-logging.sh
+    . "$lib_vendor_bash_utils_logging"
 fi
