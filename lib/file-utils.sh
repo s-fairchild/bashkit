@@ -71,9 +71,9 @@ parse_file_extension() {
     printf "%s" "$output"
 }
 
-if [ "${__lib_vendor_bash_utils_logging_sourced:-}" != "true" ]; then
-    declare -r lib_vendor_bash_utils_logging="hack/lib/vendor-bash-utils-logging.sh"
-    [ -f "$lib_vendor_bash_utils_logging" ] || { printf '%s\n' "failed to find file: $lib_opt_bash_utils_logging" >&2; exit 1; }
-    # shellcheck source=../../../lib/vendor-bash-utils-logging.sh
-    . "$lib_vendor_bash_utils_logging"
+if [ "${____bash_utils_base_config_logging_sourced:-}" != "true" ]; then
+    declare -r __bash_utils_base_config_logging="hack/lib/vendor-bash-utils-logging.sh"
+    [ -f "$__bash_utils_base_config_logging" ] || { printf '%s\n' "failed to find file: $__bash_utils_base_config_logging" >&2; exit 1; }
+    # shellcheck source=../../bash-utils/lib/base-config-logging.sh
+    . "$__bash_utils_base_config_logging"
 fi
