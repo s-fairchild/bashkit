@@ -9,7 +9,7 @@ declare -r __bashkit_lib_logging_sourced="true"
 # Used to set path vendored software is located.
 # Useful when sourced outside of this repository (i. e. this repo is a git submodule)
 #
-declare -r VENDOR_BASHKIT=${VENDOR_GIT_SUBMODULES["bashkit"]:-..}
+declare -r VENDOR_BASHKIT=${VENDOR_GIT_MODULES["bashkit"]:-..}
 
 declare -F fatal > /dev/null 2>&1 || fatal() { printf '%s\n' "${1:-}" >&2; exit 1; }
 
