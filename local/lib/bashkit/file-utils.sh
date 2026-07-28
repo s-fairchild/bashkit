@@ -1,5 +1,7 @@
 # shellcheck shell=bash
 
+[ "${XTRACE:-0}" -eq 1 ] && set -x
+
 declare -r __hack_lib_file_utils_sourced="true"
 declare -r __error_no_file="a file must be provided to read into memory."
 
@@ -71,9 +73,12 @@ parse_file_extension() {
     printf "%s" "$output"
 }
 
+declare __bashkit_path="${BASH_SOURCE[0]%/*/*}"
 if [ "${____bash_utils_base_config_logging_sourced:-}" != "true" ]; then
-    declare -r __bash_utils_base_config_logging="hack/lib/vendor-bash-utils-logging.sh"
+    declare __bash_utils_base_config_logging="${__bashkit_path}/../bash-utils/lib/base-config-logging.sh"
     [ -f "$__bash_utils_base_config_logging" ] || { printf '%s\n' "failed to find file: $__bash_utils_base_config_logging" >&2; exit 1; }
     # shellcheck source=../../bash-utils/lib/base-config-logging.sh
     . "$__bash_utils_base_config_logging"
+    unset __bash_utils_bash_config_logging
 fi
+unset __bashkit_path
