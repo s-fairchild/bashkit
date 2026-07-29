@@ -27,7 +27,7 @@ if [ "${____bash_utils_base_config_logging_sourced:-}" != "true" ]; then
     [ -f "$__bash_utils_base_config_logging" ] || { printf '%s\n' "failed to find file: $__bash_utils_base_config_logging" >&2; exit 1; }
     # shellcheck source=../../../bash-utils/lib/base-config-logging.sh
     . "$__bash_utils_base_config_logging"
-    unset __bash_utils_bash_config_logging
+    unset __bash_utils_base_config_logging
 fi
 unset __bashkit_path
 
