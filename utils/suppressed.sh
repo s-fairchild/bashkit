@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 
-declare -r __bashkit_suppressed_sourced="true"
+declare -r __vendor_bashkit_utils_suppressed_sourced="true"
 
 # with_xtrace_suppressed save <state_var>
 # with_xtrace_suppressed restore <state_var>
@@ -15,7 +15,7 @@ declare -r __bashkit_suppressed_sourced="true"
 #          active when saved. No-op otherwise. Idempotent, so it's safe to
 #          call more than once against the same <state_var>.
 with_xtrace_suppressed() {
-    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     local -r mode="${1?$(error "\$1 $ERROR_ARG_REQUIRED")}"
     local -n state="${2?$(error "\$2 $ERROR_ARG_REQUIRED")}"
 
@@ -37,17 +37,15 @@ with_xtrace_suppressed() {
             fi
             ;;
         *)
-            fatal "$ERROR_OPTION_UNKNOWN: $mode"
+            log_fatal "$ERROR_OPTION_UNKNOWN: $mode"
             ;;
     esac
 }
 
-declare __bashkit_path="${BASH_SOURCE[0]%/*}"
-if [ "${__bash_utils_base_config_logging_sourced:-}" != "true" ]; then
-    declare __bash_utils_base_config_logging="${__bashkit_path}/../bash-logger-compat.sh"
-    [ -f "$__bash_utils_base_config_logging" ] || { printf '%s\n' "failed to find file: $__bash_utils_base_config_logging" >&2; exit 1; }
-    # shellcheck source=../bash-logger-compat.sh
-    . "$__bash_utils_base_config_logging"
-    unset __bash_utils_base_config_logging
+if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then
+    declare __vendor_bash_logger_compat="${BASH_SOURCE[0]%/*}/bash-logger-compat.sh"
+    [ -f "$__vendor_bash_logger_compat" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_compat" >&2; exit 1; }
+    # shellcheck source=../../bash-logger-compat.sh
+    . "$__vendor_bash_logger_compat"
+    unset __vendor_bash_logger_compat
 fi
-unset __bashkit_path

@@ -4,7 +4,7 @@
 
 [ "${XTRACE:-0}" -eq 1 ] && set -x
 
-declare -r __hack_lib_ignition_installer_sourced="true"
+declare -r __vendor_bashkit_utils_coreos_installer_sourced="true"
 declare -r __INSTALLER_WORKDIR="/data"
 
 usage_coreos-installer() {
@@ -41,7 +41,7 @@ USAGE
 #   * PODMAN_LOG_LEVEL      - string; podman run log level (default: warn).
 #   * INSTALLER_VOLUME_MOUNT - string; host directory to mount as the container workdir.
 coreos-installer() {
-    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     local -a secrets=() mounts=()
     local opt OPTIND=1
@@ -50,17 +50,19 @@ coreos-installer() {
             h) usage_coreos-installer; exit 0 ;;
             s)
                 secrets+=("$OPTARG")
+                log_sensitive "secrets+=(\"$OPTARG\")"
                 ;;
             m)
                 mounts+=("$OPTARG")
+                log_debug "mounts+=(\"$OPTARG\")"
                 ;;
             :)
                 usage_coreos-installer
-                fatal "-${OPTARG} $ERROR_OPTION_REQUIRED"
+                log_fatal "-${OPTARG} $ERROR_OPTION_REQUIRED"
                 ;;
             ?)
                 usage_coreos-installer
-                fatal "-${OPTARG} $ERROR_OPTION_UNKNOWN"
+                log_fatal "-${OPTARG} $ERROR_OPTION_UNKNOWN"
                 ;;
         esac
     done
@@ -79,18 +81,20 @@ coreos-installer() {
 
     local s
     for s in "${secrets[@]}"; do
+        log_sensitive "Appending --secret=$s to podman_run_options..."
         podman_run_options+=("--secret=$s")
     done
 
     local m
     for m in "${mounts[@]}"; do
+        log_debug "Appending --mount=$m to podman_run_options..."
         podman_run_options+=("--mount=$m")
     done
 
-    debug "$(declare -p __INSTALLER_WORKDIR)"
-    debug "$(declare -p image)"
-    debug "$(declare -p podman_run_options)"
-    debug "coreos-installer options: $*"
+    log_debug "$(declare -p __INSTALLER_WORKDIR)"
+    log_debug "$(declare -p image)"
+    log_sensitive "$(declare -p podman_run_options)"
+    log_sensitive "coreos-installer options: $*"
 
     # shellcheck disable=SC2068
     podman run \
@@ -98,15 +102,12 @@ coreos-installer() {
         "$image" \
         $@
 }
-
 export -f coreos-installer
 
-declare __bashkit_path="${BASH_SOURCE[0]%/*/*}"
-if [ "${__bash_utils_base_config_logging_sourced:-}" != "true" ]; then
-    declare __bash_utils_base_config_logging="${__bashkit_path}/../bash-logger-compat.sh"
-    [ -f "$__bash_utils_base_config_logging" ] || { printf '%s\n' "failed to find file: $__bash_utils_base_config_logging" >&2; exit 1; }
+if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then
+    declare __vendor_bash_logger_compat="${BASH_SOURCE[0]%/*}/bash-logger-compat.sh"
+    [ -f "$__vendor_bash_logger_compat" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_compat" >&2; exit 1; }
     # shellcheck source=../../bash-logger-compat.sh
-    . "$__bash_utils_base_config_logging"
-    unset __bash_utils_base_config_logging
+    . "$__vendor_bash_logger_compat"
+    unset __vendor_bash_logger_compat
 fi
-unset __bashkit_path

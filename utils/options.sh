@@ -1,26 +1,13 @@
 # shellcheck shell=bash
 
-declare -r __vendor_bashkit_lib_network_validate_sourced="true"
+declare -r __vendor_bashkit_utils_options_sourced="true"
 
-# validate_url()
-# Returns 1 if the URL provided is invalid
-#
-# args:
-# 1) url - string; url string to be validated
-validate_url() {
+is_option_duplicate() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r url="${1}"
+    local -r v="${1?$(error "\$1 $ERROR_ARG_REQUIRED")}"
+    local -r o="${2?$(error "\$2 $ERROR_ARG_REQUIRED")}"
 
-    if [ -z "$url" ]; then
-        abort "url is empty."
-    fi
-
-    local -r regex='^(https?|ftp|file)://[-[:alnum:]\+&@#/%?=~_|!:,.;]*[-[:alnum:]\+&@#/%=~_|\.]*$'
-
-    if [[ ! "$url" =~ $regex ]]; then
-        log "The string \"$url\" is NOT a valid URL."
-        return 1
-    fi
+    [ -z "$v" ] || log_fatal "-${o} ${ERROR_OPTION_DUPLICATE}"
 }
 
 if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then

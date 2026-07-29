@@ -1,6 +1,8 @@
 # shellcheck shell=bash
 
+declare -r __vendor_bashkit_lib_virsh_install_fcos_sourced="true"
 declare -r __opt_name="n"
+declare -r __opt_connect="p"
 declare -r __opt_arch="a"
 declare -r __opt_vcpus="c"
 declare -r __opt_disk_gb="d"
@@ -14,20 +16,21 @@ declare -r __opt_ignition="f"
 declare -r __opt_help="h"
 
 virsh_install_fcos() {
-    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    log_sensitive "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-    local opt OPTIND=1
-    local name arch graphics image stream os_variant network ignition
+    local vm_name connect arch graphics image stream os_variant network ignition
     local -i vcpus disk_gb ram_mb
-    local -a disks=()
-
-    local -r getopts_str=":${__opt_name}:${__opt_arch}:${__opt_vcpus}:${__opt_disk_gb}:${__opt_graphics}:${__opt_image}:${__opt_ram_mb}:${__opt_stream}:${__opt_os_variant}:${__opt_network}:${__opt_ignition}:${__opt_help}"
-
+    local -r getopts_str=":${__opt_name}:${__opt_connect}:${__opt_arch}:${__opt_vcpus}:${__opt_disk_gb}:${__opt_graphics}:${__opt_image}:${__opt_ram_mb}:${__opt_stream}:${__opt_os_variant}:${__opt_network}:${__opt_ignition}:${__opt_help}"
+    local opt OPTIND=1
     while getopts "${getopts_str}" opt; do
         case "$opt" in
             "$__opt_name")
-                is_option_duplicate "$name" "$__opt_name"
-                name="$OPTARG"
+                is_option_duplicate "$vm_name" "$__opt_name"
+                vm_name="$OPTARG"
+                ;;
+            "$__opt_connect")
+                is_option_duplicate "$connect" "$__opt_connect"
+                connect="$OPTARG"
                 ;;
             "$__opt_arch")
                 is_option_duplicate "$arch" "$__opt_arch"
@@ -72,28 +75,35 @@ virsh_install_fcos() {
                 ignition="$OPTARG"
                 ;;
             "$__opt_help")
-                info "TODO create usage statement function."
+                log_info "TODO create usage statement function."
                 return 0
                 ;;
             :)
-                fatal "-${OPTARG} ${ERROR_OPTION_REQUIRED}"
+                log_fatal "-${OPTARG} ${ERROR_OPTION_REQUIRED}"
                 ;;
             ?)
-                fatal "-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
+                log_fatal "-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
                 ;;
         esac
     done
     shift $((OPTIND - 1))
 
-    # qcow2 expected
-    local -r image="${image?$(fatal "${ERROR_OPTION_REQUIRED}: -${__opt_image}")}"
-    local -r name="${name:="fcos-$RANDOM"}"
-    local -r vcpus="${vcpus:=2}"
-    local -r ram_mb="${ram_mb:=2048}"
-    local -r stream="${stream:='stable'}"
-    local -r disk_gb="${disk_gb:=10}"
+    [ -n "${image:-}" ] || log_fatal "${ERROR_OPTION_REQUIRED}: -${__opt_image}"
+    [ -v ignition ] && log_fatal "$ERROR_OPTION_REQUIRED: -${__opt_ignition}"
 
-    [ -v ignition ] && fatal "$ERROR_OPTION_REQUIRED: -${__opt_ignition}"
+    local -a virt_install_options=(
+        "--connect=${connect:-'qemu:///system'}"
+        "--name=${vm_name:-"fcos-$RANDOM"}"
+        "--vcpus=${vcpus:-2}"
+        "--memory=${ram_mb:-2048}"
+        "--os-variant=fedora-coreos-${stream:-'stable'}"
+        "--import"
+        "--graphics=none"
+        "--disk=size=${disk_gb:-10},backing_store=${image}"
+        "--network network=${network},portForward0=127.0.0.1:6443:6443,portForward1=127.0.0.1:80:8080"
+    )
+
+    log_debug "$(declare -p virt_install_options)"
 
     # xtrace must be off *before* the -f test below: we don't yet know whether
     # $ignition is a path or a secret string, and it's the traced command line
@@ -105,33 +115,28 @@ virsh_install_fcos() {
     local ignition_type="string"
     if [ -f "$ignition" ]; then
         ignition_type="file"
-        # Just a path from here on -- safe to resume tracing early.
+
+        chcon --verbose \
+              --type svirt_home_t \
+              "$ignition"
+
+        # Safe to resume tracing early.
         with_xtrace_suppressed restore ignition_xtrace_was_on
     fi
+    log_debug "$(declare -p ignition_type)"
 
     # For x86 / aarch64
-    local -a ignition_device_arg=(--qemu-commandline="-fw_cfg name=opt/com.coreos/config,${ignition_type}=${ignition}")
+    virt_install_options+=(--qemu-commandline="-fw_cfg name=opt/com.coreos/config,${ignition_type}=${ignition}")
     unset ignition
-
-    # TODO allow setting ignition config as a local file in addition to a string
-    # Setup the correct SELinux label to allow access to the config
-    # chcon --verbose --type svirt_home_t ${IGNITION_CONFIG}
 
     # ignition_device_arg still carries the raw string here, and it's about to
     # be expanded onto the virt-install command line below -- restoring xtrace
     # before that call would trace the secret right back out again, so the
     # string branch stays suppressed through the call itself and only
     # restores after (see the final with_xtrace_suppressed call below).
-    virt-install --connect="qemu:///system" \
-                 --name="${VM_NAME}" \
-                 --vcpus="${VCPUS}" \
-                 --memory="${RAM_MB}" \
-                 --os-variant="fedora-coreos-$STREAM" \
-                 --import \
-                 --graphics=none \
-                 --disk="size=${DISK_GB},backing_store=${IMAGE}" \
-                 --network bridge=virbr0 \
-                 "${ignition_device_arg[@]}"
+    #
+    # shellcheck disable=SC2068
+    virt-install ${virt_install_options[@]} $@
 
     # if/fi (not `&&`): this is the last statement in the function, and under
     # this repo's errexit + ERR trap, a bare `[ cond ] && cmd` here would make
@@ -142,26 +147,18 @@ virsh_install_fcos() {
     fi
 }
 
-virsh() {
-    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    command virsh
-}
-
-export -f virsh virsh_install_fcos
-
-declare __bashkit_path="${BASH_SOURCE[0]%/*/*}"
-if [ "${__bashkit_lib_getopts_options_sourced:-}" != "true" ]; then
-    declare __bashkit_lib_getopts_options="${__bashkit_path}lib/getopts/options.sh"
-    [ -f "$__bashkit_lib_getopts_options" ] || { printf '%s\n' "failed to find file: ${__bashkit_lib_getopts_options}" >&2; exit 1; }
-    # shellcheck source=../lib/getopts/options.sh
-    . "$__bashkit_lib_getopts_options"
-    unset __bashkit_lib_getopts_options
+# logging library is sourced in options.sh (and suppressed.sh), there is no need to source it here.
+if [ "${__vendor_bashkit_utils_options_sourced:-}" != "true" ]; then
+    declare __vendor_bashkit_utils_options="hack/vendor/bashkit/utils/getopts/options.sh"
+    [ -f "$__vendor_bashkit_utils_options" ] || { printf '%s\n' "failed to find file: ${__vendor_bashkit_utils_options}" >&2; exit 1; }
+    # shellcheck source=../../utils/options.sh
+    . "$__vendor_bashkit_utils_options"
+    unset __vendor_bashkit_utils_options
 fi
-if [ "${__bashkit_suppressed_sourced:-}" != "true" ]; then
-    declare __bashkit_suppressed="${__bashkit_path}/suppressed.sh"
-    [ -f "$__bashkit_suppressed" ] || { printf '%s\n' "failed to find file: ${__bashkit_suppressed}" >&2; exit 1; }
-    # shellcheck source=../suppressed.sh
-    . "$__bashkit_suppressed"
-    unset __bashkit_suppressed
+if [ "${__vendor_bashkit_utils_suppressed_sourced:-}" != "true" ]; then
+    declare __vendor_bashkit_utils_suppressed="hack/vendor/bashkit/utils/suppressed.sh"
+    [ -f "$__vendor_bashkit_utils_suppressed" ] || { printf '%s\n' "failed to find file: ${__vendor_bashkit_utils_suppressed}" >&2; exit 1; }
+    # shellcheck source=../../utils/suppressed.sh
+    . "$__vendor_bashkit_utils_suppressed"
+    unset __vendor_bashkit_utils_suppressed
 fi
-unset __bashkit_path
