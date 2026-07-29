@@ -12,7 +12,7 @@ validate_url() {
     local -r url="${1}"
 
     if [ -z "$url" ]; then
-        abort "url is empty."
+        fatal "url is empty."
     fi
 
     local -r regex='^(https?|ftp|file)://[-[:alnum:]\+&@#/%?=~_|!:,.;]*[-[:alnum:]\+&@#/%=~_|\.]*$'
@@ -24,7 +24,7 @@ validate_url() {
 }
 
 if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then
-    declare __vendor_bash_logger_compat="${BASH_SOURCE[0]%/*}/bash-logger-compat.sh"
+    declare __vendor_bash_logger_compat="hack/vendor/bash-logger-compat.sh"
     [ -f "$__vendor_bash_logger_compat" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_compat" >&2; exit 1; }
     # shellcheck source=../../../bash-logger-compat.sh
     . "$__vendor_bash_logger_compat"

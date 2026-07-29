@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 
-declare -r __vendor_bashkit_lib_virsh_install_fcos_sourced="true"
+declare -r __vendor_bashkit_lib_virsh_virt_install_fcos_sourced="true"
 declare -r __opt_name="n"
 declare -r __opt_connect="p"
 declare -r __opt_arch="a"
