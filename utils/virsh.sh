@@ -153,7 +153,7 @@ declare __bashkit_path="${BASH_SOURCE[0]%/*/*}"
 if [ "${__bashkit_lib_getopts_options_sourced:-}" != "true" ]; then
     declare __bashkit_lib_getopts_options="${__bashkit_path}lib/getopts/options.sh"
     [ -f "$__bashkit_lib_getopts_options" ] || { printf '%s\n' "failed to find file: ${__bashkit_lib_getopts_options}" >&2; exit 1; }
-    # shellcheck source=../../bash-utils/lib/base-config-logging.sh
+    # shellcheck source=../lib/getopts/options.sh
     . "$__bashkit_lib_getopts_options"
     unset __bashkit_lib_getopts_options
 fi

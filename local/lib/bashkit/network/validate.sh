@@ -22,10 +22,10 @@ validate_url() {
 }
 
 declare __bashkit_path="${BASH_SOURCE[0]%/*/*}"
-if [ "${____bash_utils_base_config_logging_sourced:-}" != "true" ]; then
-    declare __bash_utils_base_config_logging="${__bashkit_path}/../bash-utils/lib/base-config-logging.sh"
+if [ "${__bash_utils_base_config_logging_sourced:-}" != "true" ]; then
+    declare __bash_utils_base_config_logging="${__bashkit_path}/../bash-logger-compat.sh"
     [ -f "$__bash_utils_base_config_logging" ] || { printf '%s\n' "failed to find file: $__bash_utils_base_config_logging" >&2; exit 1; }
-    # shellcheck source=../../../bash-utils/lib/base-config-logging.sh
+    # shellcheck source=../../../bash-logger-compat.sh
     . "$__bash_utils_base_config_logging"
     unset __bash_utils_base_config_logging
 fi
