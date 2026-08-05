@@ -1,0 +1,12 @@
+#!/bin/bash
+
+bw() {
+    # shellcheck disable=SC2068
+    flatpak run \
+            --command=bw \
+            com.bitwarden.desktop \
+            $@
+}
+
+# shellcheck disable=SC2068
+bw $@
