@@ -4,7 +4,9 @@ declare -r __vendor_bashkit_lib_virsh_network_sourced="true"
 
 virsh_net_define() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network_name="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
+
+    require_operands 1 "$@" || return 1
+    local -r network_name="$1"
     local -r network_desc="${2:-}"
 
     local -a network_xml=(
@@ -13,17 +15,6 @@ virsh_net_define() {
     )
 
     [ -n "$network_desc" ] && network_xml+=("<description>${network_desc}</description>")
-
-    network_xml+=(
-    "<bridge name=\"virbr1\" stp=\"on\" delay=\"0\"/>"
-    "<forward mode=\"nat\"/>"
-    "<ip address=\"192.168.150.1\" netmask=\"255.255.255.0\">"
-    "<dhcp>"
-    "<range start=\"192.168.150.2\" end=\"192.168.150.254\"/>"
-    "</dhcp>"
-    "</ip>"
-    "</network>"
-    )
 
     local network_xml_file
     network_xml_file="$(mktemp --suffix="${FUNCNAME[0]}.xml")"
@@ -34,16 +25,16 @@ virsh_net_define() {
 
 virsh_net_activate() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
 
-    virsh net-start "$network"
+    require_operands 1 "$@" || return 1
+    virsh net-start "$1"
 }
 
 virsh_net_destroy() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
 
-    virsh net-destroy "$network"
+    require_operands 1 "$@" || return 1
+    virsh net-destroy "$1"
 }
 
 declare -r __NETWORK_KEY_ACTIVE="Active"
@@ -52,46 +43,51 @@ declare -r __NETWORK_KEY_AUTOSTART="Autostart"
 
 virsh_net_is_defined() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
 
-    virsh net-uuid "$network" > /dev/null 2>&1
+    require_operands 1 "$@" || return 1
+    virsh net-uuid "$1" > /dev/null 2>&1
 }
 
 virsh_net_is_active() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
 
-    virsh_net_parse_info "$network" "$__NETWORK_KEY_ACTIVE"
+    require_operands 1 "$@" || return 1
+    virsh_net_parse_info "$1" "$__NETWORK_KEY_ACTIVE"
 }
 
 virsh_net_is_persistent() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
 
-    virsh_net_parse_info "$network" "$__NETWORK_KEY_PERSISTENT"
+    require_operands 1 "$@" || return 1
+    virsh_net_parse_info "$1" "$__NETWORK_KEY_PERSISTENT"
 }
 
 virsh_net_is_autostart() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
 
-    virsh_net_parse_info "$network" "$__NETWORK_KEY_AUTOSTART"
+    require_operands 1 "$@" || return 1
+    virsh_net_parse_info "$1" "$__NETWORK_KEY_AUTOSTART"
 }
 
 virsh_net_autostart() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
 
-    virsh net-autostart "$network"
+    require_operands 1 "$@" || return 1
+    virsh net-autostart "$1"
 }
 
 virsh_net_parse_info() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r network="${1?$(fatal "\$1 ${ERROR_ARG_REQUIRED}")}"
-    local -r search="${2?$(fatal "\$2 ${ERROR_ARG_REQUIRED}")}"
+
+    require_operands 2 "$@" || return 1
+    local -r network="$1"
+    local -r search="$2"
 
     local -r regex_test="(${__NETWORK_KEY_ACTIVE}|${__NETWORK_KEY_PERSISTENT}|${__NETWORK_KEY_AUTOSTART})"
-    [[ $search =~ $regex_test ]] || log_fatal "\$1 must match regex: ${regex_test}"
+    if ! [[ $search =~ $regex_test ]]; then
+        log_error "\$1 ${ERROR_REGEX_FAIL}: ${regex_test}"
+        return 1
+    fi
 
     virsh net-info "$network" \
         | grep "$search" \
@@ -103,14 +99,15 @@ virsh_net_parse_info() {
 if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then
     declare __vendor_bash_logger_compat="hack/vendor/bash-logger-compat.sh"
     [ -f "$__vendor_bash_logger_compat" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_compat" >&2; exit 1; }
-    # shellcheck source=../../../bash-logger-compat.sh
+    # shellcheck source=../../../../../bash-logger-compat.sh
     . "$__vendor_bash_logger_compat"
     unset __vendor_bash_logger_compat
 fi
-if [ "${__vendor_bashkit_lib_virsh_sourced:-}" != "true" ]; then
-    declare __vendor_bashkit_lib_virsh="hack/vendor/bashkit/lib/virsh/virsh.sh"
-    [ -f "$__vendor_bashkit_lib_virsh" ] || log_fatal "${ERROR_FILE_NOT_FOUND}: ${__vendor_bashkit_lib_virsh}"
-    # shellcheck source=virsh.sh
-    . "$__vendor_bashkit_lib_virsh"
-    unset __vendor_bashkit_lib_virsh
+
+if [ "${__vendor_bashkit_utils_options_sourced:-}" != "true" ]; then
+    declare __vendor_bashkit_utils_options="hack/vendor/bashkit/local/lib/bashkit/options.sh"
+    [ -f "$__vendor_bashkit_utils_options" ] || { printf '%s\n' "failed to find file: $__vendor_bashkit_utils_options" >&2; exit 1; }
+    # shellcheck source=../options.sh
+    . "$__vendor_bashkit_utils_options"
+    unset __vendor_bashkit_utils_options
 fi

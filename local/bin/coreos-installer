@@ -1,6 +1,4 @@
-# hack/lib/ignition/installer.sh
-#
-# shellcheck shell=bash
+#!/bin/bash
 
 [ "${XTRACE:-0}" -eq 1 ] && set -x
 
@@ -102,12 +100,21 @@ coreos-installer() {
         "$image" \
         $@
 }
-export -f coreos-installer
 
 if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then
     declare __vendor_bash_logger_compat="hack/vendor/bash-logger-compat.sh"
     [ -f "$__vendor_bash_logger_compat" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_compat" >&2; exit 1; }
-    # shellcheck source=../../bash-logger-compat.sh
+    # shellcheck source=../../../bash-logger-compat.sh
     . "$__vendor_bash_logger_compat"
     unset __vendor_bash_logger_compat
 fi
+
+if [ "${__vendor_bashkit_utils_options_sourced:-}" != "true" ]; then
+    declare __vendor_bashkit_utils_options="hack/vendor/bashkit/local/lib/bashkit/options.sh"
+    [ -f "$__vendor_bashkit_utils_options" ] || { printf '%s\n' "failed to find file: $__vendor_bashkit_utils_options" >&2; exit 1; }
+    # shellcheck source=../lib/bashkit/options.sh
+    . "$__vendor_bashkit_utils_options"
+    unset __vendor_bashkit_utils_options
+fi
+
+coreos-installer "$@"

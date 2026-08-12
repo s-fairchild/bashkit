@@ -1,6 +1,16 @@
 # shellcheck shell=bash
 
-declare -r __vendor_bashkit_utils_suppressed_sourced="true"
+declare -r __vendor_bashkit_utils_options_sourced="true"
+
+is_option_arg_dup() {
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    
+    require_operands 2 "$@" || return 1
+    local -r opt="$1"
+    local -r opt_arg="$2"
+
+    [ -z "$opt_arg" ] || log_error "-${opt} ${ERROR_OPTION_ARG_DUP}"
+}
 
 # with_xtrace_suppressed save <state_var>
 # with_xtrace_suppressed restore <state_var>
@@ -16,8 +26,10 @@ declare -r __vendor_bashkit_utils_suppressed_sourced="true"
 #          call more than once against the same <state_var>.
 with_xtrace_suppressed() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r mode="${1?$(error "\$1 $ERROR_ARG_REQUIRED")}"
-    local -n state="${2?$(error "\$2 $ERROR_ARG_REQUIRED")}"
+    
+    require_operands 2 "$@" || return 1
+    local -r mode="$1"
+    local -n state="$2"
 
     case "$mode" in
         save)
@@ -42,10 +54,19 @@ with_xtrace_suppressed() {
     esac
 }
 
+
 if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then
     declare __vendor_bash_logger_compat="hack/vendor/bash-logger-compat.sh"
     [ -f "$__vendor_bash_logger_compat" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_compat" >&2; exit 1; }
-    # shellcheck source=../../bash-logger-compat.sh
+    # shellcheck source=../../../../bash-logger-compat.sh
     . "$__vendor_bash_logger_compat"
     unset __vendor_bash_logger_compat
+fi
+
+if [ "${__vendor_bashkit_utils_options_sourced:-}" != "true" ]; then
+    declare __vendor_bashkit_utils_options="hack/vendor/bashkit/local/lib/bashkit/options.sh"
+    [ -f "$__vendor_bashkit_utils_options" ] || { printf '%s\n' "failed to find file: $__vendor_bashkit_utils_options" >&2; exit 1; }
+    # shellcheck source=options.sh
+    . "$__vendor_bashkit_utils_options"
+    unset __vendor_bashkit_utils_options
 fi

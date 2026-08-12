@@ -8,5 +8,4 @@ bw() {
             $@
 }
 
-# shellcheck disable=SC2068
-bw $@
+bw "$@"
