@@ -20,8 +20,12 @@ virsh_pool_define() {
 # virsh_pool_build()
 #
 # Creates the on-disk target directory for a defined pool. Mirrors `virsh pool-build`.
-# Safe to call on a pool whose target already exists -- passes --no-overwrite so an
-# already-built pool is left untouched instead of erroring.
+# For fs/disk/logical pools -- the only types --overwrite/--no-overwrite are valid
+# for (virsh(1)) -- passes --no-overwrite so an already-built pool is left untouched
+# instead of erroring. Any other pool type (e.g. dir) is built with no flags: those
+# flags fail on such pools with "No source device specified when formatting pool",
+# and an unflagged build is already idempotent for them (a dir pool build is just
+# `mkdir -p` on the target path).
 #
 # args:
 #   * 1) name - string; pool name to build.
@@ -29,7 +33,13 @@ virsh_pool_build() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     local -r name="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
 
-    virsh pool-build "$name" --no-overwrite
+    local pool_type
+    pool_type="$(virsh pool-dumpxml "$name" | grep -oP "(?<=<pool type=')[^']+")"
+
+    case "$pool_type" in
+        fs | disk | logical) virsh pool-build "$name" --no-overwrite ;;
+        *)                    virsh pool-build "$name" ;;
+    esac
 }
 
 # virsh_pool_start()
@@ -84,7 +94,15 @@ virsh_pool_is_active() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     local -r name="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
 
-    virsh pool-info "$name" 2> /dev/null | grep -q '^State: *running'
+    # Capture first, then grep the captured text (not a live pipe): under this
+    # repo's `set -o pipefail`, `virsh pool-info | grep -q ...` intermittently
+    # fails the whole pipeline even on a match -- grep -q exits the instant it
+    # matches "State: running" (line 3 of ~8), SIGPIPEing virsh before it finishes
+    # writing the remaining lines, and pipefail reports that SIGPIPE exit (141)
+    # instead of grep's own success.
+    local info
+    info="$(virsh pool-info "$name" 2> /dev/null)"
+    grep -q '^State: *running' <<< "$info"
 }
 
 # virsh_vol_create()
