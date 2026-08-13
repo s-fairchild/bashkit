@@ -12,9 +12,9 @@ declare -r __vendor_bashkit_lib_virsh_pool_sourced="true"
 #   * 1) xml_file - string; path to a storage pool XML file, or "/dev/stdin".
 virsh_pool_define() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r xml_file="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
 
-    virsh pool-define "$xml_file"
+    require_operands 1 "$@" || return 1
+    virsh pool-define "$1"
 }
 
 # virsh_pool_build()
@@ -31,7 +31,9 @@ virsh_pool_define() {
 #   * 1) name - string; pool name to build.
 virsh_pool_build() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r name="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
+
+    require_operands 1 "$@" || return 1
+    local -r name="$1"
 
     local pool_type
     pool_type="$(virsh pool-dumpxml "$name" | grep -oP "(?<=<pool type=')[^']+")"
@@ -50,9 +52,9 @@ virsh_pool_build() {
 #   * 1) name - string; pool name to start.
 virsh_pool_start() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r name="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
+    require_operands 1 "$@" || return 1
 
-    virsh pool-start "$name"
+    virsh pool-start "$1"
 }
 
 # virsh_pool_autostart()
@@ -63,9 +65,9 @@ virsh_pool_start() {
 #   * 1) name - string; pool name to mark autostart.
 virsh_pool_autostart() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r name="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
+    require_operands 1 "$@" || return 1
 
-    virsh pool-autostart "$name"
+    virsh pool-autostart "$1"
 }
 
 # virsh_pool_is_defined()
@@ -78,9 +80,9 @@ virsh_pool_autostart() {
 #   * 1) name - string; pool name to check.
 virsh_pool_is_defined() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r name="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
+    require_operands 1 "$@" || return 1
 
-    virsh pool-uuid "$name" > /dev/null 2>&1
+    virsh pool-uuid "$1" > /dev/null 2>&1
 }
 
 # virsh_pool_is_active()
@@ -92,7 +94,7 @@ virsh_pool_is_defined() {
 #   * 1) name - string; pool name to check.
 virsh_pool_is_active() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r name="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
+    require_operands 1 "$@" || return 1
 
     # Capture first, then grep the captured text (not a live pipe): under this
     # repo's `set -o pipefail`, `virsh pool-info | grep -q ...` intermittently
@@ -101,7 +103,7 @@ virsh_pool_is_active() {
     # writing the remaining lines, and pipefail reports that SIGPIPE exit (141)
     # instead of grep's own success.
     local info
-    info="$(virsh pool-info "$name" 2> /dev/null)"
+    info="$(virsh pool-info "$1" 2> /dev/null)"
     grep -q '^State: *running' <<< "$info"
 }
 
@@ -115,8 +117,10 @@ virsh_pool_is_active() {
 #   * 2) xml_file - string; path to a storage volume XML file, or "/dev/stdin".
 virsh_vol_create() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r pool="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
-    local -r xml_file="${2?$(fatal "\$2 ${ERROR_OPERAND_REQUIRED}")}"
+
+    require_operands 2 "$@" || return 1
+    local -r pool="$1"
+    local -r xml_file="$2"
 
     virsh vol-create "$pool" "$xml_file"
 }
@@ -131,10 +135,15 @@ virsh_vol_create() {
 #   * 2) vol - string; volume name to check for.
 virsh_vol_is_present() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    local -r pool="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"
-    local -r vol="${2?$(fatal "\$2 ${ERROR_OPERAND_REQUIRED}")}"
 
-    virsh vol-info --pool "$pool" "$vol" > /dev/null 2>&1
+    require_operands 2 "$@" || return 1
+    local -r pool="$1"
+    local -r vol="$2"
+
+    virsh vol-info \
+          --pool "$pool" \
+          "$vol" \
+          > /dev/null 2>&1
 }
 
 if [ "${__vendor_bash_logger_adapter_sourced:-}" != "true" ]; then

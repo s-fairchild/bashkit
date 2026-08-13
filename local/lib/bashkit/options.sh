@@ -4,12 +4,15 @@ declare -r __vendor_bashkit_utils_options_sourced="true"
 
 is_option_arg_dup() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-    
+
     require_operands 2 "$@" || return 1
     local -r opt="$1"
     local -r opt_arg="$2"
 
-    [ -z "$opt_arg" ] || log_error "-${opt} ${ERROR_OPTION_ARG_DUP}"
+    if [ -n "$opt_arg" ]; then
+        log_error "-${opt} ${opt_arg} ${ERROR_OPTION_ARG_DUP}"
+        return 1
+    fi
 }
 
 # with_xtrace_suppressed save <state_var>
@@ -54,19 +57,10 @@ with_xtrace_suppressed() {
     esac
 }
 
-
 if [ "${__vendor_bash_logger_adapter_sourced:-}" != "true" ]; then
     declare __vendor_bash_logger_adapter="${BASH_SOURCE[0]%/*}/../../../../bash-logger-adapter.sh"
     [ -f "$__vendor_bash_logger_adapter" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_adapter" >&2; exit 1; }
     # shellcheck source=../../../../bash-logger-adapter.sh
     . "$__vendor_bash_logger_adapter"
     unset __vendor_bash_logger_adapter
-fi
-
-if [ "${__vendor_bashkit_utils_options_sourced:-}" != "true" ]; then
-    declare __vendor_bashkit_utils_options="${BASH_SOURCE[0]%/*}/options.sh"
-    [ -f "$__vendor_bashkit_utils_options" ] || { printf '%s\n' "failed to find file: $__vendor_bashkit_utils_options" >&2; exit 1; }
-    # shellcheck source=options.sh
-    . "$__vendor_bashkit_utils_options"
-    unset __vendor_bashkit_utils_options
 fi
