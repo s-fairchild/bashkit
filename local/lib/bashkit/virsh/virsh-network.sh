@@ -97,7 +97,7 @@ virsh_net_parse_info() {
 }
 
 if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then
-    declare __vendor_bash_logger_compat="hack/vendor/bash-logger-compat.sh"
+    declare __vendor_bash_logger_compat="${BASH_SOURCE[0]%/*}/../../../../../bash-logger-compat.sh"
     [ -f "$__vendor_bash_logger_compat" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_compat" >&2; exit 1; }
     # shellcheck source=../../../../../bash-logger-compat.sh
     . "$__vendor_bash_logger_compat"
@@ -105,7 +105,7 @@ if [ "${__vendor_bash_logger_compat_sourced:-}" != "true" ]; then
 fi
 
 if [ "${__vendor_bashkit_utils_options_sourced:-}" != "true" ]; then
-    declare __vendor_bashkit_utils_options="hack/vendor/bashkit/local/lib/bashkit/options.sh"
+    declare __vendor_bashkit_utils_options="${BASH_SOURCE[0]%/*}/../options.sh"
     [ -f "$__vendor_bashkit_utils_options" ] || { printf '%s\n' "failed to find file: $__vendor_bashkit_utils_options" >&2; exit 1; }
     # shellcheck source=../options.sh
     . "$__vendor_bashkit_utils_options"
