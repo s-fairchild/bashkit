@@ -119,18 +119,18 @@ virsh_dom_is_active() {
     [ "$(virsh domstate "$1" 2> /dev/null)" == "running" ]
 }
 
-if [ "${__vendor_bash_logger_adapter_sourced:-}" != "true" ]; then
-    declare __vendor_bash_logger_adapter="${BASH_SOURCE[0]%/*}/../../../../../bash-logger-adapter.sh"
-    [ -f "$__vendor_bash_logger_adapter" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_adapter" >&2; exit 1; }
-    # shellcheck source=../../../../../bash-logger-adapter.sh
-    . "$__vendor_bash_logger_adapter"
-    unset __vendor_bash_logger_adapter
+if [ "${__bash_logger_adapter_sourced:-}" != "true" ]; then
+    declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../../../bash-logger-adapter/adapter.sh"
+    [ -f "$__bash_logger_adapter_path" ] || { printf '%s\n' "failed to find file: $__bash_logger_adapter_sourced" >&2; exit 1; }
+    # shellcheck source=../../../../../bash-logger-adapter/adapter.sh
+    . "$__bash_logger_adapter_path"
+    unset __bash_logger_adapter_path
 fi
 
-if [ "${__vendor_bashkit_utils_options_sourced:-}" != "true" ]; then
-    declare __vendor_bashkit_utils_options="${BASH_SOURCE[0]%/*}/../options.sh"
-    [ -f "$__vendor_bashkit_utils_options" ] || { printf '%s\n' "failed to find file: $__vendor_bashkit_utils_options" >&2; exit 1; }
-    # shellcheck source=../options.sh
-    . "$__vendor_bashkit_utils_options"
-    unset __vendor_bashkit_utils_options
+if [ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]; then
+    declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../options-operands-utils.sh"
+    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || log "$LOG_LEVEL_FATAL"
+    # shellcheck source=../options-operands-utils.sh
+    . "$__vendor_bashkit_local_lib_bashkit_options_operands_utils"
+    unset __vendor_bashkit_local_lib_bashkit_options_operands_utils
 fi

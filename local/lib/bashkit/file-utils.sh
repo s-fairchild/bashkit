@@ -79,10 +79,10 @@ parse_file_extension() {
     printf "%s" "$output"
 }
 
-if [ "${__vendor_bash_logger_adapter_sourced:-}" != "true" ]; then
-    declare __vendor_bash_logger_adapter="${BASH_SOURCE[0]%/*}/../../../../bash-logger-adapter.sh"
-    [ -f "$__vendor_bash_logger_adapter" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_adapter" >&2; exit 1; }
-    # shellcheck source=../../../../bash-logger-adapter.sh
-    . "$__vendor_bash_logger_adapter"
-    unset __vendor_bash_logger_adapter
+if [ "${__bash_logger_adapter_sourced:-}" != "true" ]; then
+    declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../../bash-logger-adapter/adapter.sh"
+    [ -f "$__bash_logger_adapter_path" ] || { printf '%s\n' "failed to find file: $__bash_logger_adapter_sourced" >&2; exit 1; }
+    # shellcheck source=../../../../bash-logger-adapter/adapter.sh
+    . "$__bash_logger_adapter_path"
+    unset __bash_logger_adapter_path
 fi

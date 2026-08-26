@@ -13,7 +13,7 @@ Runs coreos-installer in a container with image quay.io/coreos/coreos-installer:
 
 Options:
     -s secret  podman secret spec passed verbatim to \`podman run --secret\`
-               (e.g. "mykey,type=mount,target=/data/mykey"). May be specified multiple times.
+               (e.g. "my-key,type=mount,target=/data/my-key"). May be specified multiple times.
     -m mount   podman volume mount spec passed verbatim to \`podman run --mount\`.
                May be specified multiple times.
     -h         Print this usage message and exit.
@@ -32,7 +32,7 @@ USAGE
 #
 # Options:
 #   * -s <spec> - podman secret spec passed verbatim to `podman run --secret`
-#                 (e.g. "mykey,type=mount,target=/data/mykey"). Repeatable.
+#                 (e.g. "my-key,type=mount,target=/data/my-key"). Repeatable.
 #   * $@        - remaining args are passed to the coreos-installer container.
 #
 # Environment:
@@ -101,20 +101,20 @@ coreos-installer() {
         $@
 }
 
-if [ "${__vendor_bash_logger_adapter_sourced:-}" != "true" ]; then
-    declare __vendor_bash_logger_adapter="${BASH_SOURCE[0]%/*}/../../../bash-logger-adapter.sh"
-    [ -f "$__vendor_bash_logger_adapter" ] || { printf '%s\n' "failed to find file: $__vendor_bash_logger_adapter" >&2; exit 1; }
-    # shellcheck source=../../../bash-logger-adapter.sh
-    . "$__vendor_bash_logger_adapter"
-    unset __vendor_bash_logger_adapter
+if [ "${__bash_logger_adapter_sourced:-}" != "true" ]; then
+    declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../bash-logger-adapter/adapter.sh"
+    [ -f "$__bash_logger_adapter_path" ] || { printf '%s\n' "failed to find file: $__bash_logger_adapter_sourced" >&2; exit 1; }
+    # shellcheck source=../../../bash-logger-adapter/adapter.sh
+    . "$__bash_logger_adapter_path"
+    unset __bash_logger_adapter_path
 fi
 
-if [ "${__vendor_bashkit_utils_options_sourced:-}" != "true" ]; then
-    declare __vendor_bashkit_utils_options="${BASH_SOURCE[0]%/*}/../lib/bashkit/options.sh"
-    [ -f "$__vendor_bashkit_utils_options" ] || { printf '%s\n' "failed to find file: $__vendor_bashkit_utils_options" >&2; exit 1; }
-    # shellcheck source=../lib/bashkit/options.sh
-    . "$__vendor_bashkit_utils_options"
-    unset __vendor_bashkit_utils_options
+if [ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]; then
+    declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/hack/vendor/bashkit/local/lib/bashkit/options-operands-utils.sh"
+    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || log "$LOG_LEVEL_FATAL"
+    # shellcheck source=../../../../vendor/bashkit/local/lib/bashkit/options-operands-utils.sh
+    . "$__vendor_bashkit_local_lib_bashkit_options_operands_utils"
+    unset __vendor_bashkit_local_lib_bashkit_options_operands_utils
 fi
 
 coreos-installer "$@"
