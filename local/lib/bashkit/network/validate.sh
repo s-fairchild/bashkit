@@ -8,20 +8,20 @@ declare -r __vendor_bashkit_lib_network_validate_sourced="true"
 # args:
 # 1) url - string; url string to be validated
 validate_url() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     
     require_operands 1 "$@" || return 1
     local -r url="$1"
 
     if [ -z "$url" ]; then
-        log_error "\$1 ${ERROR_STRING_EMPTY}"
+        error "\$1 ${ERROR_STRING_EMPTY}"
         return 1
     fi
 
     local -r regex='^(https?|ftp|file)://[-[:alnum:]\+&@#/%?=~_|!:,.;]*[-[:alnum:]\+&@#/%=~_|\.]*$'
 
     if [[ ! "$url" =~ $regex ]]; then
-        log_error "\$1 ${ERROR_REGEX_FAIL}: ${regex}"
+        error "\$1 ${ERROR_REGEX_FAIL}: ${regex}"
         return 1
     fi
 }
@@ -36,7 +36,7 @@ fi
 
 if [ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]; then
     declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../options-operands-utils.sh"
-    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || log "$LOG_LEVEL_FATAL"
+    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || fatal "${ERROR_FILE_NOT_FOUND}: ${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
     # shellcheck source=../options-operands-utils.sh
     . "$__vendor_bashkit_local_lib_bashkit_options_operands_utils"
     unset __vendor_bashkit_local_lib_bashkit_options_operands_utils

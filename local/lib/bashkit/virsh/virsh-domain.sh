@@ -10,7 +10,7 @@ declare -r __vendor_bashkit_lib_virsh_domain_sourced="true"
 # args:
 #   * 1) xml_file - string; path to a domain XML file, or "/dev/stdin".
 virsh_dom_define() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh define "$1"
@@ -24,7 +24,7 @@ virsh_dom_define() {
 # args:
 #   * 1) name - string; domain name to undefine.
 virsh_dom_undefine() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh undefine "$1"
@@ -41,7 +41,7 @@ virsh_dom_undefine() {
 # args:
 #   * 1) xml_file - string; path to a domain XML file, or "/dev/stdin".
 virsh_dom_create() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh create "$1"
@@ -54,7 +54,7 @@ virsh_dom_create() {
 # args:
 #   * 1) name - string; domain name to start.
 virsh_dom_start() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh start "$1"
@@ -70,7 +70,7 @@ virsh_dom_start() {
 # args:
 #   * 1) name - string; domain name to destroy.
 virsh_dom_destroy() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh destroy "$1"
@@ -84,7 +84,7 @@ virsh_dom_destroy() {
 # args:
 #   * 1) name - string; domain name to mark autostart.
 virsh_dom_autostart() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh autostart "$1"
@@ -99,7 +99,7 @@ virsh_dom_autostart() {
 # args:
 #   * 1) name - string; domain name to check.
 virsh_dom_is_defined() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh dominfo "$1" > /dev/null 2>&1
@@ -113,7 +113,7 @@ virsh_dom_is_defined() {
 # args:
 #   * 1) name - string; domain name to check.
 virsh_dom_is_active() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     [ "$(virsh domstate "$1" 2> /dev/null)" == "running" ]
@@ -129,7 +129,7 @@ fi
 
 if [ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]; then
     declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../options-operands-utils.sh"
-    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || log "$LOG_LEVEL_FATAL"
+    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || fatal "${ERROR_FILE_NOT_FOUND}: ${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
     # shellcheck source=../options-operands-utils.sh
     . "$__vendor_bashkit_local_lib_bashkit_options_operands_utils"
     unset __vendor_bashkit_local_lib_bashkit_options_operands_utils

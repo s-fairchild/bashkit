@@ -4,14 +4,14 @@ declare -r __vendor_bashkit_lib_file_utils_sourced="true"
 declare -r __error_no_file="a file must be provided to read into memory."
 
 read_file_builtin() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     if [ -t 0 ]; then
         local -r input="$(cat)"
     elif (( $# )); then
         local -r input="$*"
     else
-        log_error "$ERROR_ARG_REQUIRED: $__error_no_file"
+        error "$ERROR_ARG_REQUIRED: $__error_no_file"
     fi
     log_sensitive "$(declare -p input)"
 
@@ -19,7 +19,7 @@ read_file_builtin() {
     log_sensitive "$(declare -p output)"
 
     if [ -z "$output" ]; then
-        log_error "failed to read file $1 into memory."
+        error "failed to read file $1 into memory."
         return 1
     fi
 
@@ -27,14 +27,14 @@ read_file_builtin() {
 }
 
 read_file_preserve_newlines() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     if [ -t 0 ]; then
         local -r input="$(cat)"
     elif (( $# )); then
         local -r input="$*"
     else
-        log_error "$ERROR_ARG_REQUIRED: $__error_no_file"
+        error "$ERROR_ARG_REQUIRED: $__error_no_file"
     fi
     log_sensitive "$(declare -p input)"
 
@@ -43,7 +43,7 @@ read_file_preserve_newlines() {
     log_sensitive "$(declare -p output)"
 
     if [ -z "$output" ]; then
-        log_error "failed to read file $1 into memory."
+        error "failed to read file $1 into memory."
         return 1
     fi
 
@@ -51,16 +51,16 @@ read_file_preserve_newlines() {
 }
 
 parse_file_extension() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     if [ -t 0 ]; then
         local -r input="$(cat)"
     elif (( $# )); then
         local -r input="$*"
     else
-        log_error "$ERROR_ARG_REQUIRED: $__error_no_file"
+        error "$ERROR_ARG_REQUIRED: $__error_no_file"
     fi
-    # log_debug should be fine as this *should* only be a file extension.
+    # DEBUG-level logging should be fine as this *should* only be a file extension.
     # but just to be on the safe side log_sensitive is used here, in the event sensitive data is accidentally here.
     log_sensitive "$(declare -p input)"
 
@@ -71,7 +71,7 @@ parse_file_extension() {
     log_sensitive "$(declare -p output)"
 
     if [ -z "$output" ]; then
-        # log_error "failed to parse checksum value."
+        # error "failed to parse checksum value."
         echo "failed to parse checksum value."
         return 1
     fi

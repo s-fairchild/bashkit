@@ -17,13 +17,13 @@ declare -r __vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced="tr
 #       ...
 #   }
 require_operands() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     local -ri count="$1"; shift
     local -i i
     for ((i = 1; i <= count; i++)); do
         if ! [ -v "$i" ]; then
-            log_error "\$${i} ${ERROR_OPERAND_REQUIRED}"
+            error "\$${i} ${ERROR_OPERAND_REQUIRED}"
             bashkit_print_stack_trace
             return 1
         fi
@@ -32,16 +32,16 @@ require_operands() {
 
 # bashkit_print_stack_trace()
 #
-# Logs the current bash call stack via log_error, deepest frame first (starting at this
+# Logs the current bash call stack at LOG_LEVEL_ERROR, deepest frame first (starting at this
 # function's caller), so a failed contract check -- e.g. require_operands -- shows every calling
 # function up to the entry-point script instead of just the one-line error. Safe to call from
 # any function; each frame is logged as "at FUNCNAME (BASH_SOURCE:line)", where "line" is the
 # line in that frame where it called into the next-deeper frame.
 bashkit_print_stack_trace() {
     local -i i
-    log_error "Stack trace (most recent call first):"
+    error "Stack trace (most recent call first):"
     for ((i = 1; i < ${#FUNCNAME[@]}; i++)); do
-        log_error "  at ${FUNCNAME[$i]} (${BASH_SOURCE[$i]}:${BASH_LINENO[$((i - 1))]})"
+        error "  at ${FUNCNAME[$i]} (${BASH_SOURCE[$i]}:${BASH_LINENO[$((i - 1))]})"
     done
 }
 
@@ -53,7 +53,7 @@ bashkit_print_stack_trace() {
 # as <current_value> -- a non-empty value there means the flag was already seen once. Logs
 # "-<opt> <current_value> <ERROR_OPTION_ARG_DUP>" and returns 1 if so; no-ops otherwise.
 is_option_arg_dup() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     # shellcheck disable=SC2068
     require_operands 1 $@ || return 1
@@ -61,7 +61,7 @@ is_option_arg_dup() {
     local -r opt_arg="$2"
 
     if [ -n "$opt_arg" ]; then
-        log_error "-${opt} ${opt_arg} ${ERROR_OPTION_ARG_DUP}"
+        error "-${opt} ${opt_arg} ${ERROR_OPTION_ARG_DUP}"
         return 1
     fi
 }
@@ -79,7 +79,7 @@ is_option_arg_dup() {
 #          active when saved. No-op otherwise. Idempotent, so it's safe to
 #          call more than once against the same <state_var>.
 with_xtrace_suppressed() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     
     require_operands 2 "$@" || return 1
     local -r mode="$1"
@@ -103,7 +103,7 @@ with_xtrace_suppressed() {
             fi
             ;;
         *)
-            log_fatal "$ERROR_OPTION_UNKNOWN: $mode"
+            fatal "$ERROR_OPTION_UNKNOWN: $mode"
             ;;
     esac
 }

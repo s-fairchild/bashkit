@@ -3,7 +3,7 @@
 declare -r __vendor_bashkit_lib_virsh_network_sourced="true"
 
 virsh_net_define() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     local -r network_name="$1"
@@ -24,14 +24,14 @@ virsh_net_define() {
 }
 
 virsh_net_activate() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh net-start "$1"
 }
 
 virsh_net_destroy() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh net-destroy "$1"
@@ -42,42 +42,42 @@ declare -r __NETWORK_KEY_PERSISTENT="Persistent"
 declare -r __NETWORK_KEY_AUTOSTART="Autostart"
 
 virsh_net_is_defined() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh net-uuid "$1" > /dev/null 2>&1
 }
 
 virsh_net_is_active() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh_net_parse_info "$1" "$__NETWORK_KEY_ACTIVE"
 }
 
 virsh_net_is_persistent() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh_net_parse_info "$1" "$__NETWORK_KEY_PERSISTENT"
 }
 
 virsh_net_is_autostart() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh_net_parse_info "$1" "$__NETWORK_KEY_AUTOSTART"
 }
 
 virsh_net_autostart() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh net-autostart "$1"
 }
 
 virsh_net_parse_info() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 2 "$@" || return 1
     local -r network="$1"
@@ -85,7 +85,7 @@ virsh_net_parse_info() {
 
     local -r regex_test="(${__NETWORK_KEY_ACTIVE}|${__NETWORK_KEY_PERSISTENT}|${__NETWORK_KEY_AUTOSTART})"
     if ! [[ $search =~ $regex_test ]]; then
-        log_error "\$1 ${ERROR_REGEX_FAIL}: ${regex_test}"
+        error "\$1 ${ERROR_REGEX_FAIL}: ${regex_test}"
         return 1
     fi
 
@@ -106,7 +106,7 @@ fi
 
 if [ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]; then
     declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../options-operands-utils.sh"
-    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || log "$LOG_LEVEL_FATAL"
+    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || fatal "${ERROR_FILE_NOT_FOUND}: ${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
     # shellcheck source=../options-operands-utils.sh
     . "$__vendor_bashkit_local_lib_bashkit_options_operands_utils"
     unset __vendor_bashkit_local_lib_bashkit_options_operands_utils

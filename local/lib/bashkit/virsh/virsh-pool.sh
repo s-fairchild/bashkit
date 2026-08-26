@@ -11,7 +11,7 @@ declare -r __vendor_bashkit_lib_virsh_pool_sourced="true"
 # args:
 #   * 1) xml_file - string; path to a storage pool XML file, or "/dev/stdin".
 virsh_pool_define() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     virsh pool-define "$1"
@@ -30,7 +30,7 @@ virsh_pool_define() {
 # args:
 #   * 1) name - string; pool name to build.
 virsh_pool_build() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 1 "$@" || return 1
     local -r name="$1"
@@ -51,7 +51,7 @@ virsh_pool_build() {
 # args:
 #   * 1) name - string; pool name to start.
 virsh_pool_start() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     require_operands 1 "$@" || return 1
 
     virsh pool-start "$1"
@@ -64,7 +64,7 @@ virsh_pool_start() {
 # args:
 #   * 1) name - string; pool name to mark autostart.
 virsh_pool_autostart() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     require_operands 1 "$@" || return 1
 
     virsh pool-autostart "$1"
@@ -79,7 +79,7 @@ virsh_pool_autostart() {
 # args:
 #   * 1) name - string; pool name to check.
 virsh_pool_is_defined() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     require_operands 1 "$@" || return 1
 
     virsh pool-uuid "$1" > /dev/null 2>&1
@@ -93,7 +93,7 @@ virsh_pool_is_defined() {
 # args:
 #   * 1) name - string; pool name to check.
 virsh_pool_is_active() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
     require_operands 1 "$@" || return 1
 
     # Capture first, then grep the captured text (not a live pipe): under this
@@ -116,7 +116,7 @@ virsh_pool_is_active() {
 #   * 1) pool - string; name of the pool to create the volume in.
 #   * 2) xml_file - string; path to a storage volume XML file, or "/dev/stdin".
 virsh_vol_create() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 2 "$@" || return 1
     local -r pool="$1"
@@ -134,7 +134,7 @@ virsh_vol_create() {
 #   * 1) pool - string; name of the pool to check.
 #   * 2) vol - string; volume name to check for.
 virsh_vol_is_present() {
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+    debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
     require_operands 2 "$@" || return 1
     local -r pool="$1"
@@ -156,7 +156,7 @@ fi
 
 if [ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]; then
     declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../options-operands-utils.sh"
-    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || log "$LOG_LEVEL_FATAL"
+    [ -f "$__vendor_bashkit_local_lib_bashkit_options_operands_utils" ] || fatal "${ERROR_FILE_NOT_FOUND}: ${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
     # shellcheck source=../options-operands-utils.sh
     . "$__vendor_bashkit_local_lib_bashkit_options_operands_utils"
     unset __vendor_bashkit_local_lib_bashkit_options_operands_utils
