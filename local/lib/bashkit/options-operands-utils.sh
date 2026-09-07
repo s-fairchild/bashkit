@@ -94,12 +94,13 @@ bashkit_print_stack_trace() {
 is_option_arg_dup() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  require_operands 2 "$@" || return 1
   local -r opt="$1"
   local -r opt_arg="$2"
 
   if [[ -n "${opt_arg}" ]]; then
     error "-${opt} ${opt_arg} ${ERROR_OPTION_ARG_DUP}"
+    bashkit_print_stack_trace
     return 1
   fi
 }
