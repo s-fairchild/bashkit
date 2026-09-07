@@ -52,7 +52,7 @@ relative to the *consumer's* CWD, not this repo"), every lib file's dependency p
 sibling `hack/vendor/bash-logger-adapter/adapter.sh` one level up from wherever this repo is
 vendored — that simply doesn't exist when linting this checkout on its own. Expect (and ignore)
 `SC1091: Not following: ... openBinaryFile: does not exist` for the `bash-logger-adapter/
-adapter.sh` and `options-operands-utils.sh` source lines when running this way; every other
+adapter.sh` and `core/contract-utils.sh` source lines when running this way; every other
 finding is real.
 
 ### Everything in one pass
@@ -64,12 +64,12 @@ find local -name '*.sh' -o -path 'local/bin/*' -type f | xargs shellcheck
 ### Confirm it actually behaves, not just parses
 
 There's no test harness. ShellCheck can't verify a function's runtime behavior (e.g. that
-`require_operands` actually rejects a missing operand, or that a `virsh_*` wrapper forwards
+`core::require_operands` actually rejects a missing operand, or that a `virsh_*` wrapper forwards
 its arguments correctly) — only that the shell syntax and common pitfalls are clean. After
 ShellCheck passes, validate by sourcing the file from within a consumer repo that has the
 `bash-logger-adapter/adapter.sh` shim available (see `CLAUDE.md`), or by writing a throwaway
 script that sources the file behind a minimal fake shim (stub `debug`/`error`/`fatal`/
-`require_operands`'s own dependencies, the `ERROR_*` constants) and calls the functions
+`core::require_operands`'s own dependencies, the `ERROR_*` constants) and calls the functions
 directly — useful when the real adapter chain in a consumer repo isn't in a runnable state.
 
 ## Key rules — write clean code from the start
@@ -107,11 +107,12 @@ idioms directly, not the lowest-common-denominator POSIX subset.
   line, a prose description, then labeled sections). Skip only a truly one-line, self-evident
   helper.
 * Every sourced lib file guards against double-inclusion with a `declare -r
-  __vendor_bashkit_lib_<name>_sourced="true"` (or, for the shared operands/getopts helper file,
-  `__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced`) at the top — **do not
-  rename these**: they're checked by every consumer across the parent repo's `hack/lib/*` and
-  `hack/bin/*` before sourcing this file, so a rename breaks every one of those call sites (see
-  `CLAUDE.md` "Critical: paths are relative to the *consumer's* CWD, not this repo").
+  __vendor_bashkit_lib_<name>_sourced="true"` (or, for the shared contract/getopts helper file,
+  `__bashkit_core_sourced`) at the top — **do not rename these without updating every call
+  site**: they're checked by every consumer across the parent repo's `hack/lib/*` and
+  `hack/bin/*` before sourcing this file, so a rename breaks every one of those call sites unless
+  they're all updated together (see `CLAUDE.md` "Critical: paths are relative to the
+  *consumer's* CWD, not this repo").
 * **Sourcing paths**: files inside this repo source siblings relative to their own location
   via `${BASH_SOURCE[0]%/*}/<relative-path>` (never relative to repo root) — this is what lets
   `local/bin/*` wrapper executables run correctly regardless of the caller's CWD, including

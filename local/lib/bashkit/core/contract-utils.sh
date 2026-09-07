@@ -1,23 +1,24 @@
 # shellcheck shell=bash
 #
 # Argument/operand validation and getopts helpers shared across bashkit and
-# its consumers: require_operands, is_option_arg_dup, with_xtrace_suppressed,
-# and a stack-trace helper used when a contract check fails.
+# its consumers: core::require_operands, core::is_option_arg_dup,
+# core::with_xtrace_suppressed, and a stack-trace helper used when a
+# contract check fails.
 
-declare -r __vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced="true"
+declare -r __bashkit_core_sourced="true"
 
-# require_operands(count "$@")
+# core::require_operands(count "$@")
 #
 # Validates that the caller's first <count> positional parameters are set
 # (present, even if empty -- matches this repo's `${N?...}` unset-only
 # convention, not `-z`). Logs "$N <ERROR_OPERAND_REQUIRED>" for the first
 # missing one and returns 1.
 #
-# `return` here only unwinds require_operands itself, not its caller -- the
-# caller must check the exit status and return on its own behalf:
+# `return` here only unwinds core::require_operands itself, not its caller --
+# the caller must check the exit status and return on its own behalf:
 #
 #   my_fn() {
-#     require_operands 3 "$@" || return 1
+#     core::require_operands 3 "$@" || return 1
 #     local -r a="$1" b="$2" c="$3"
 #     ...
 #   }
@@ -32,7 +33,7 @@ declare -r __vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced="tr
 #   An error and stack trace on the first missing operand.
 # Returns:
 #   1 if any of the first <count> operands is unset; 0 otherwise.
-require_operands() {
+core::require_operands() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local -ri count="$1"; shift
@@ -40,17 +41,17 @@ require_operands() {
   for (( i = 1; i <= count; i++ )); do
     if ! [[ -v "${i}" ]]; then
       error "\$${i} ${ERROR_OPERAND_REQUIRED}"
-      bashkit_print_stack_trace
+      core::print_stack_trace
       return 1
     fi
   done
 }
 
-# bashkit_print_stack_trace()
+# core::print_stack_trace()
 #
 # Logs the current bash call stack at LOG_LEVEL_ERROR, deepest frame first
 # (starting at this function's caller), so a failed contract check --
-# e.g. require_operands -- shows every calling function up to the
+# e.g. core::require_operands -- shows every calling function up to the
 # entry-point script instead of just the one-line error. Safe to call from
 # any function; each frame is logged as "at FUNCNAME (BASH_SOURCE:line)",
 # where "line" is the line in that frame where it called into the
@@ -64,7 +65,7 @@ require_operands() {
 #   The call stack, one frame per line, at ERROR level.
 # Returns:
 #   Always 0.
-bashkit_print_stack_trace() {
+core::print_stack_trace() {
   local -i i
   error "Stack trace (most recent call first):"
   for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
@@ -72,7 +73,7 @@ bashkit_print_stack_trace() {
   done
 }
 
-# is_option_arg_dup(opt current_value)
+# core::is_option_arg_dup(opt current_value)
 #
 # Rejects a repeated single-value getopts flag. Call it from a
 # `case "$opt" in ...)` arm *before* assigning `OPTARG`, passing the target
@@ -91,22 +92,22 @@ bashkit_print_stack_trace() {
 #   An error if the flag is a duplicate.
 # Returns:
 #   1 if the flag is a duplicate; 0 otherwise.
-is_option_arg_dup() {
+core::is_option_arg_dup() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return 1
   local -r opt="$1"
   local -r opt_arg="$2"
 
   if [[ -n "${opt_arg}" ]]; then
     error "-${opt} ${opt_arg} ${ERROR_OPTION_ARG_DUP}"
-    bashkit_print_stack_trace
+    core::print_stack_trace
     return 1
   fi
 }
 
-# with_xtrace_suppressed(save state_var)
-# with_xtrace_suppressed(restore state_var)
+# core::with_xtrace_suppressed(save state_var)
+# core::with_xtrace_suppressed(restore state_var)
 #
 # save:    records whether xtrace (`set -x`) is currently active into
 #          <state_var> (1 if active, 0 if not), then disables it. Call this
@@ -127,10 +128,10 @@ is_option_arg_dup() {
 #   None.
 # Returns:
 #   Always 0 for "save"/"restore"; exits fatally on an unknown mode.
-with_xtrace_suppressed() {
+core::with_xtrace_suppressed() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return 1
   local -r mode="$1"
   local -n state="$2"
 
@@ -158,9 +159,9 @@ with_xtrace_suppressed() {
 }
 
 if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
-  declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../../bash-logger-adapter/adapter.sh"
+  declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../../../bash-logger-adapter/adapter.sh"
   [[ -f "${__bash_logger_adapter_path}" ]] || { printf '%s\n' "failed to find file: ${__bash_logger_adapter_path}" >&2; exit 1; }
-  # shellcheck source=../../../../bash-logger-adapter/adapter.sh
+  # shellcheck source=../../../../../bash-logger-adapter/adapter.sh
   . "${__bash_logger_adapter_path}"
   unset __bash_logger_adapter_path
 fi

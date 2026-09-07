@@ -22,7 +22,7 @@ declare -r __vendor_bashkit_lib_virsh_pool_sourced="true"
 virsh_pool_define() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh pool-define "$1"
 }
 
@@ -48,7 +48,7 @@ virsh_pool_define() {
 virsh_pool_build() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   local -r name="$1"
 
   local pool_type
@@ -74,7 +74,7 @@ virsh_pool_build() {
 #   The exit status of `virsh pool-start`.
 virsh_pool_start() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
 
   virsh pool-start "$1"
 }
@@ -94,7 +94,7 @@ virsh_pool_start() {
 #   The exit status of `virsh pool-autostart`.
 virsh_pool_autostart() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
 
   virsh pool-autostart "$1"
 }
@@ -115,7 +115,7 @@ virsh_pool_autostart() {
 #   0 if the pool is defined; non-zero otherwise.
 virsh_pool_is_defined() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
 
   virsh pool-uuid "$1" > /dev/null 2>&1
 }
@@ -136,7 +136,7 @@ virsh_pool_is_defined() {
 #   0 if the pool's state is "running"; non-zero otherwise.
 virsh_pool_is_active() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
 
   # Capture first, then grep the captured text (not a live pipe): under
   # this repo's `set -o pipefail`, `virsh pool-info | grep -q ...`
@@ -168,7 +168,7 @@ virsh_pool_is_active() {
 virsh_vol_create() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return 1
   local -r pool="$1"
   local -r xml_file="$2"
 
@@ -193,7 +193,7 @@ virsh_vol_create() {
 virsh_vol_is_present() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return 1
   local -r pool="$1"
   local -r vol="$2"
 
@@ -211,10 +211,10 @@ if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
   unset __bash_logger_adapter_path
 fi
 
-if [[ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]]; then
-  declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../options-operands-utils.sh"
-  [[ -f "${__vendor_bashkit_local_lib_bashkit_options_operands_utils}" ]] || fatal "${ERROR_FILE_NOT_FOUND}: ${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
-  # shellcheck source=../options-operands-utils.sh
-  . "${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
-  unset __vendor_bashkit_local_lib_bashkit_options_operands_utils
+if [[ "${__bashkit_core_sourced:-}" != "true" ]]; then
+  declare __bashkit_core="${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+  [[ -f "${__bashkit_core}" ]] || fatal "${ERROR_FILE_NOT_FOUND}: ${__bashkit_core}"
+  # shellcheck source=../core/contract-utils.sh
+  . "${__bashkit_core}"
+  unset __bashkit_core
 fi

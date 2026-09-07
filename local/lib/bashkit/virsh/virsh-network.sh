@@ -25,7 +25,7 @@ declare -r __NETWORK_KEY_AUTOSTART="Autostart"
 virsh_net_define() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   local -r network_name="$1"
   local -r network_desc="${2:-}"
 
@@ -58,7 +58,7 @@ virsh_net_define() {
 virsh_net_activate() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh net-start "$1"
 }
 
@@ -77,7 +77,7 @@ virsh_net_activate() {
 virsh_net_destroy() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh net-destroy "$1"
 }
 
@@ -98,7 +98,7 @@ virsh_net_destroy() {
 virsh_net_is_defined() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh net-uuid "$1" > /dev/null 2>&1
 }
 
@@ -118,7 +118,7 @@ virsh_net_is_defined() {
 virsh_net_is_active() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh_net_parse_info "$1" "${__NETWORK_KEY_ACTIVE}"
 }
 
@@ -139,7 +139,7 @@ virsh_net_is_active() {
 virsh_net_is_persistent() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh_net_parse_info "$1" "${__NETWORK_KEY_PERSISTENT}"
 }
 
@@ -159,7 +159,7 @@ virsh_net_is_persistent() {
 virsh_net_is_autostart() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh_net_parse_info "$1" "${__NETWORK_KEY_AUTOSTART}"
 }
 
@@ -179,7 +179,7 @@ virsh_net_is_autostart() {
 virsh_net_autostart() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh net-autostart "$1"
 }
 
@@ -202,7 +202,7 @@ virsh_net_autostart() {
 virsh_net_parse_info() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return 1
   local -r network="$1"
   local -r search="$2"
 
@@ -227,10 +227,10 @@ if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
   unset __bash_logger_adapter_path
 fi
 
-if [[ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]]; then
-  declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../options-operands-utils.sh"
-  [[ -f "${__vendor_bashkit_local_lib_bashkit_options_operands_utils}" ]] || fatal "${ERROR_FILE_NOT_FOUND}: ${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
-  # shellcheck source=../options-operands-utils.sh
-  . "${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
-  unset __vendor_bashkit_local_lib_bashkit_options_operands_utils
+if [[ "${__bashkit_core_sourced:-}" != "true" ]]; then
+  declare __bashkit_core="${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+  [[ -f "${__bashkit_core}" ]] || fatal "${ERROR_FILE_NOT_FOUND}: ${__bashkit_core}"
+  # shellcheck source=../core/contract-utils.sh
+  . "${__bashkit_core}"
+  unset __bashkit_core
 fi

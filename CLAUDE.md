@@ -12,17 +12,17 @@ Every lib file's self-sourcing guard block hardcodes paths like:
 
 ```bash
 declare __bash_logger_adapter_path="hack/vendor/bash-logger-adapter/adapter.sh"
-declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="local/lib/bashkit/options-operands-utils.sh"
+declare __bashkit_core="local/lib/bashkit/core/contract-utils.sh"
 ```
 
-These are **not** `${BASH_SOURCE[0]%/*}`-relative — they assume the sourcing script is run from the consuming project's repo root, with bashkit vendored at exactly `hack/vendor/bashkit/` and a sibling `hack/vendor/bash-logger-adapter/adapter.sh` shim present. This repo cannot source its own libs standalone; a `log_debug`/`log_error`/`log_fatal`/`require_operands`/`ERROR_*` API and a `fatal()` helper must come from that external shim. When editing or adding a lib file here, preserve this convention (same guard-var naming and path shape) rather than switching to `$BASH_SOURCE`-relative sourcing — the latter would break every existing consumer.
+These are **not** `${BASH_SOURCE[0]%/*}`-relative — they assume the sourcing script is run from the consuming project's repo root, with bashkit vendored at exactly `hack/vendor/bashkit/` and a sibling `hack/vendor/bash-logger-adapter/adapter.sh` shim present. This repo cannot source its own libs standalone; a `log_debug`/`log_error`/`log_fatal`/`core::require_operands`/`ERROR_*` API and a `fatal()` helper must come from that external shim. When editing or adding a lib file here, preserve this convention (same guard-var naming and path shape) rather than switching to `$BASH_SOURCE`-relative sourcing — the latter would break every existing consumer.
 
 ## Install target has a known gap
 
 ```bash
 make install
 ```
-copies `local/bin/*` to `~/.local/bin/` and `local/lib/bashkit/*` to `~/.local/lib/bashkit/`. The lib copy uses `install -t ... local/lib/bashkit/*`, which does **not** recurse into subdirectories — `install` prints `omitting directory` and exits nonzero for `network/` and `virsh/`, so only the top-level `file-utils.sh`/`options-operands-utils.sh` actually land in `~/.local/lib/bashkit/`. Standalone installs are effectively broken for the `virsh/` and `network/` libs today; the vendored-submodule path (sourcing directly out of `hack/vendor/bashkit/local/lib/bashkit/...`) is the one that actually works and is what `forge` relies on.
+copies `local/bin/*` to `~/.local/bin/` and `local/lib/bashkit/*` to `~/.local/lib/bashkit/`. The lib copy uses `install -t ... local/lib/bashkit/*`, which does **not** recurse into subdirectories — `install` prints `omitting directory` and exits nonzero for `core/`, `network/`, and `virsh/`, so only the top-level `file-utils.sh` actually lands in `~/.local/lib/bashkit/`. Standalone installs are effectively broken for the `core/`, `virsh/`, and `network/` libs today; the vendored-submodule path (sourcing directly out of `hack/vendor/bashkit/local/lib/bashkit/...`) is the one that actually works and is what `forge` relies on.
 
 ## Structure
 
@@ -33,7 +33,7 @@ local/
     coreos-installer           # runs quay.io/coreos/coreos-installer:release via podman
   lib/bashkit/
     file-utils.sh              # read_file_builtin, read_file_preserve_newlines, parse_file_extension
-    options-operands-utils.sh  # require_operands, bashkit_print_stack_trace, is_option_arg_dup, with_xtrace_suppressed
+    core/contract-utils.sh     # core::require_operands, core::print_stack_trace, core::is_option_arg_dup, core::with_xtrace_suppressed
     network/validate.sh        # validate_url
     virsh/
       virsh-domain.sh          # virsh_dom_{define,undefine,create,start,destroy,autostart,is_defined,is_active}
@@ -45,9 +45,9 @@ local/
 
 ## Conventions to follow when adding/editing functions
 
-- Guard every sourced file against double-inclusion: `declare -r __vendor_bashkit_lib_<name>_sourced="true"` at the top, checked before re-sourcing dependencies at the bottom (each file re-sources `bash-logger-adapter/adapter.sh` and `options-operands-utils.sh` itself — don't assume load order from a caller).
+- Guard every sourced file against double-inclusion: `declare -r __vendor_bashkit_lib_<name>_sourced="true"` at the top, checked before re-sourcing dependencies at the bottom (each file re-sources `bash-logger-adapter/adapter.sh` and `core/contract-utils.sh` itself — don't assume load order from a caller).
 - Log function entry as the first line of every function: `log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"`.
-- Argument validation is consistent across every file now: `virsh-domain.sh`, `virsh-network.sh`, and `virsh-pool.sh` all use `require_operands N "$@" || return 1` then `local -r x="$1"` (the migration off the older `local -r x="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"` pattern, referenced in older commit messages as "adopt require_operands", is complete). Use `require_operands` for any new function.
+- Argument validation is consistent across every file now: `virsh-domain.sh`, `virsh-network.sh`, and `virsh-pool.sh` all use `core::require_operands N "$@" || return 1` then `local -r x="$1"` (the migration off the older `local -r x="${1?$(fatal "\$1 ${ERROR_OPERAND_REQUIRED}")}"` pattern, referenced in older commit messages as "adopt require_operands", is complete). Use `core::require_operands` for any new function.
 - Follow the [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html): 2-space indentation, `[[ ]]` (never `[ ]`/`test`), quote every expansion (`"${var}"`), split `local x; x=$(...)` rather than combining declare+assign from a command substitution, and a Description/Globals/Arguments/Outputs/Returns comment block (matching the format already used in `hack/vendor/bash-logger-adapter/adapter.sh`) above every function. This repo's own `.claude/skills/linting-code/SKILL.md` has the full checklist and lint commands — read it before making further changes here.
 - Anything that could contain secrets (podman `--secret` specs, tokens, file contents) is logged with `log_sensitive`, never `log_debug`/`log_info` — keep that distinction when adding new call sites that touch credential material.
 - Thin `virsh`/`podman` wrappers just validate operands and exec the real command — no output parsing beyond the `*_is_*` predicate functions, which grep/cut `virsh ...-info` output and return via exit status for use directly in `if`/`&&` conditionals.

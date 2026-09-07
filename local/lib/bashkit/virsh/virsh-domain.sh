@@ -20,7 +20,7 @@ declare -r __vendor_bashkit_lib_virsh_domain_sourced="true"
 virsh_dom_define() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh define "$1"
 }
 
@@ -41,7 +41,7 @@ virsh_dom_define() {
 virsh_dom_undefine() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh undefine "$1"
 }
 
@@ -65,7 +65,7 @@ virsh_dom_undefine() {
 virsh_dom_create() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh create "$1"
 }
 
@@ -84,7 +84,7 @@ virsh_dom_create() {
 virsh_dom_start() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh start "$1"
 }
 
@@ -106,7 +106,7 @@ virsh_dom_start() {
 virsh_dom_destroy() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh destroy "$1"
 }
 
@@ -127,7 +127,7 @@ virsh_dom_destroy() {
 virsh_dom_autostart() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh autostart "$1"
 }
 
@@ -148,7 +148,7 @@ virsh_dom_autostart() {
 virsh_dom_is_defined() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   virsh dominfo "$1" > /dev/null 2>&1
 }
 
@@ -168,7 +168,7 @@ virsh_dom_is_defined() {
 virsh_dom_is_active() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return 1
   [[ "$(virsh domstate "$1" 2> /dev/null)" == "running" ]]
 }
 
@@ -180,10 +180,10 @@ if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
   unset __bash_logger_adapter_path
 fi
 
-if [[ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]]; then
-  declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../options-operands-utils.sh"
-  [[ -f "${__vendor_bashkit_local_lib_bashkit_options_operands_utils}" ]] || fatal "${ERROR_FILE_NOT_FOUND}: ${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
-  # shellcheck source=../options-operands-utils.sh
-  . "${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
-  unset __vendor_bashkit_local_lib_bashkit_options_operands_utils
+if [[ "${__bashkit_core_sourced:-}" != "true" ]]; then
+  declare __bashkit_core="${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+  [[ -f "${__bashkit_core}" ]] || fatal "${ERROR_FILE_NOT_FOUND}: ${__bashkit_core}"
+  # shellcheck source=../core/contract-utils.sh
+  . "${__bashkit_core}"
+  unset __bashkit_core
 fi
