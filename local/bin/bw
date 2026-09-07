@@ -1,11 +1,26 @@
 #!/bin/bash
+#
+# Thin wrapper that runs the Bitwarden CLI (`bw`) inside the Bitwarden
+# desktop flatpak.
 
+# bw(args...)
+#
+# Runs `bw` via `flatpak run --command=bw com.bitwarden.desktop`, forwarding
+# all arguments through untouched.
+#
+# Globals:
+#   None.
+# Arguments:
+#   $@   Arguments forwarded verbatim to `bw`.
+# Outputs:
+#   Whatever `bw` writes.
+# Returns:
+#   The exit status of `bw`.
 bw() {
-    # shellcheck disable=SC2068
-    flatpak run \
-            --command=bw \
-            com.bitwarden.desktop \
-            $@
+  flatpak run \
+    --command=bw \
+    com.bitwarden.desktop \
+    "$@"
 }
 
 bw "$@"
