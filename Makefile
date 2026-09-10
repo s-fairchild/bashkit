@@ -6,9 +6,10 @@ help: ## Show this help message
 
 .PHONY: help
 
-install: ## Install local/bin and local/lib/bashkit into ~/.local (BROKEN: install -t doesn't recurse, network/ and virsh/ subdirs are skipped)
+install: ## Install local/bin and local/lib/bashkit (recursively) into ~/.local
 	mkdir -p ~/.local/bin
 	install -v -t ~/.local/bin/ local/bin/*
 
-	mkdir -p ~/.local/lib/bashkit
-	install -v -t ~/.local/lib/bashkit local/lib/bashkit/*
+	while IFS= read -r -d '' file; do
+	  install -v -Dm644 "$${file}" "$${HOME}/.local/lib/bashkit/$${file#local/lib/bashkit/}"
+	done < <(find local/lib/bashkit -type f -print0)
