@@ -2,7 +2,13 @@
 #
 # Thin, operand-validated wrappers around `virsh` domain (VM) subcommands.
 
-declare -r __vendor_bashkit_lib_virsh_domain_sourced="true"
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
+
+readonly __BASHKIT_LIB_VIRSH_DOMAIN_SOURCED="true"
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+fi
 
 # virsh_dom_define(xml_file)
 #
@@ -17,8 +23,8 @@ declare -r __vendor_bashkit_lib_virsh_domain_sourced="true"
 #   Whatever `virsh define` writes.
 # Returns:
 #   The exit status of `virsh define`.
-virsh_dom_define() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::domain_define() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh define "$1"
@@ -38,8 +44,8 @@ virsh_dom_define() {
 #   Whatever `virsh undefine` writes.
 # Returns:
 #   The exit status of `virsh undefine`.
-virsh_dom_undefine() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::domain_undefine() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh undefine "$1"
@@ -62,8 +68,8 @@ virsh_dom_undefine() {
 #   Whatever `virsh create` writes.
 # Returns:
 #   The exit status of `virsh create`.
-virsh_dom_create() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::domain_create() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh create "$1"
@@ -81,8 +87,8 @@ virsh_dom_create() {
 #   Whatever `virsh start` writes.
 # Returns:
 #   The exit status of `virsh start`.
-virsh_dom_start() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::domain_start() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh start "$1"
@@ -103,8 +109,8 @@ virsh_dom_start() {
 #   Whatever `virsh destroy` writes.
 # Returns:
 #   The exit status of `virsh destroy`.
-virsh_dom_destroy() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::domain_destroy() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh destroy "$1"
@@ -124,8 +130,8 @@ virsh_dom_destroy() {
 #   Whatever `virsh autostart` writes.
 # Returns:
 #   The exit status of `virsh autostart`.
-virsh_dom_autostart() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::domain_autostart() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh autostart "$1"
@@ -145,8 +151,8 @@ virsh_dom_autostart() {
 #   None (virsh's own output is discarded).
 # Returns:
 #   0 if the domain is defined; non-zero otherwise.
-virsh_dom_is_defined() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::domain_is_defined() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh dominfo "$1" > /dev/null 2>&1
@@ -165,25 +171,9 @@ virsh_dom_is_defined() {
 #   None.
 # Returns:
 #   0 if the domain's state is "running"; non-zero otherwise.
-virsh_dom_is_active() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::domain_is_active() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   [[ "$(virsh domstate "$1" 2> /dev/null)" == "running" ]]
 }
-
-if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
-  declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../../../bash-logger-adapter/adapter.sh"
-  [[ -f "${__bash_logger_adapter_path}" ]] || { printf '%s\n' "failed to find file: ${__bash_logger_adapter_path}" >&2; exit 1; }
-  # shellcheck source=../../../../../bash-logger-adapter/adapter.sh
-  . "${__bash_logger_adapter_path}"
-  unset __bash_logger_adapter_path
-fi
-
-if [[ "${__bashkit_core_sourced:-}" != "true" ]]; then
-  declare __bashkit_core="${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-  [[ -f "${__bashkit_core}" ]] || fatal "${ERROR_FILE_NOT_FOUND}: ${__bashkit_core}"
-  # shellcheck source=../core/contract-utils.sh
-  . "${__bashkit_core}"
-  unset __bashkit_core
-fi

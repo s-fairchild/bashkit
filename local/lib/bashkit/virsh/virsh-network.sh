@@ -2,11 +2,25 @@
 #
 # Thin, operand-validated wrappers around `virsh` network subcommands.
 
-declare -r __vendor_bashkit_lib_virsh_network_sourced="true"
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
-declare -r __NETWORK_KEY_ACTIVE="Active"
-declare -r __NETWORK_KEY_PERSISTENT="Persistent"
-declare -r __NETWORK_KEY_AUTOSTART="Autostart"
+readonly __BASHKIT_LIB_VIRSH_NETWORK_SOURCED="true"
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+fi
+
+#####################
+### Globals Start ###
+#####################
+
+readonly __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE="Active"
+readonly __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT="Persistent"
+readonly __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART="Autostart"
+
+###################
+### Globals End ###
+###################
 
 # virsh_net_define(name [description])
 #
@@ -22,8 +36,8 @@ declare -r __NETWORK_KEY_AUTOSTART="Autostart"
 #   Whatever `virsh net-define` writes.
 # Returns:
 #   The exit status of `virsh net-define`.
-virsh_net_define() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_define() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   local -r network_name="$1"
@@ -55,8 +69,8 @@ virsh_net_define() {
 #   Whatever `virsh net-start` writes.
 # Returns:
 #   The exit status of `virsh net-start`.
-virsh_net_activate() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_activate() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh net-start "$1"
@@ -74,8 +88,8 @@ virsh_net_activate() {
 #   Whatever `virsh net-destroy` writes.
 # Returns:
 #   The exit status of `virsh net-destroy`.
-virsh_net_destroy() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_destroy() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh net-destroy "$1"
@@ -95,8 +109,8 @@ virsh_net_destroy() {
 #   None.
 # Returns:
 #   0 if the network is defined; non-zero otherwise.
-virsh_net_is_defined() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_is_defined() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh net-uuid "$1" > /dev/null 2>&1
@@ -108,18 +122,18 @@ virsh_net_is_defined() {
 # wrapper around `virsh net-info` for use in conditional expressions.
 #
 # Globals:
-#   __NETWORK_KEY_ACTIVE
+#   __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE
 # Arguments:
 #   $1   Network name to check.
 # Outputs:
 #   None.
 # Returns:
 #   0 if the network's "Active" field is "yes"; non-zero otherwise.
-virsh_net_is_active() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_is_active() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
-  virsh_net_parse_info "$1" "${__NETWORK_KEY_ACTIVE}"
+  virsh_net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_ACTIVE}"
 }
 
 # virsh_net_is_persistent(name)
@@ -129,18 +143,18 @@ virsh_net_is_active() {
 # expressions.
 #
 # Globals:
-#   __NETWORK_KEY_PERSISTENT
+#   __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT
 # Arguments:
 #   $1   Network name to check.
 # Outputs:
 #   None.
 # Returns:
 #   0 if the network's "Persistent" field is "yes"; non-zero otherwise.
-virsh_net_is_persistent() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_is_persistent() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
-  virsh_net_parse_info "$1" "${__NETWORK_KEY_PERSISTENT}"
+  virsh_net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT}"
 }
 
 # virsh_net_is_autostart(name)
@@ -149,18 +163,18 @@ virsh_net_is_persistent() {
 # Thin wrapper around `virsh net-info` for use in conditional expressions.
 #
 # Globals:
-#   __NETWORK_KEY_AUTOSTART
+#   __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART
 # Arguments:
 #   $1   Network name to check.
 # Outputs:
 #   None.
 # Returns:
 #   0 if the network's "Autostart" field is "yes"; non-zero otherwise.
-virsh_net_is_autostart() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_is_autostart() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
-  virsh_net_parse_info "$1" "${__NETWORK_KEY_AUTOSTART}"
+  virsh_net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART}"
 }
 
 # virsh_net_autostart(name)
@@ -176,8 +190,8 @@ virsh_net_is_autostart() {
 #   Whatever `virsh net-autostart` writes.
 # Returns:
 #   The exit status of `virsh net-autostart`.
-virsh_net_autostart() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_autostart() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
   virsh net-autostart "$1"
@@ -189,7 +203,7 @@ virsh_net_autostart() {
 # if its value is "yes".
 #
 # Globals:
-#   __NETWORK_KEY_ACTIVE, __NETWORK_KEY_PERSISTENT, __NETWORK_KEY_AUTOSTART
+#   __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE, __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT, __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART
 # Arguments:
 #   $1   Network name.
 #   $2   Field name to search for; must be one of the __NETWORK_KEY_*
@@ -199,16 +213,20 @@ virsh_net_autostart() {
 # Returns:
 #   1 if $2 is unrecognized; otherwise 0 if the field's value is "yes",
 #   non-zero otherwise.
-virsh_net_parse_info() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+virsh::net_parse_info() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 2 "$@" || return 1
   local -r network="$1"
   local -r search="$2"
 
-  local -r regex_test="(${__NETWORK_KEY_ACTIVE}|${__NETWORK_KEY_PERSISTENT}|${__NETWORK_KEY_AUTOSTART})"
+  local regex_test="${__BASHKIT_VIRSH_NETWORK_KEY_ACTIVE}"
+  regex_test+="|${__BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT}"
+  regex_test+="|${__BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART}"
+  readonly regex_test
+
   if ! [[ "${search}" =~ ${regex_test} ]]; then
-    error "\$1 ${ERROR_REGEX_FAIL}: ${regex_test}"
+    log_error "\$1 failed regex match: ${regex_test}"
     return 1
   fi
 
@@ -216,21 +234,5 @@ virsh_net_parse_info() {
     | grep "${search}" \
     | tr -d ' ' \
     | cut -d : -f 2 \
-    | grep -q "yes"
+    | grep -q "$BOOLEAN_YES"
 }
-
-if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
-  declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../../../bash-logger-adapter/adapter.sh"
-  [[ -f "${__bash_logger_adapter_path}" ]] || { printf '%s\n' "failed to find file: ${__bash_logger_adapter_path}" >&2; exit 1; }
-  # shellcheck source=../../../../../bash-logger-adapter/adapter.sh
-  . "${__bash_logger_adapter_path}"
-  unset __bash_logger_adapter_path
-fi
-
-if [[ "${__bashkit_core_sourced:-}" != "true" ]]; then
-  declare __bashkit_core="${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-  [[ -f "${__bashkit_core}" ]] || fatal "${ERROR_FILE_NOT_FOUND}: ${__bashkit_core}"
-  # shellcheck source=../core/contract-utils.sh
-  . "${__bashkit_core}"
-  unset __bashkit_core
-fi

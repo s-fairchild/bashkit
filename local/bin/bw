@@ -3,6 +3,10 @@
 # Thin wrapper that runs the Bitwarden CLI (`bw`) inside the Bitwarden
 # desktop flatpak.
 
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
+
+readonly __BASHKIT_BIN_BW_SOURCED="true"
+
 # bw(args...)
 #
 # Runs `bw` via `flatpak run --command=bw com.bitwarden.desktop`, forwarding
@@ -16,11 +20,25 @@
 #   Whatever `bw` writes.
 # Returns:
 #   The exit status of `bw`.
-bw() {
+core::bw() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+
   flatpak run \
     --command=bw \
     com.bitwarden.desktop \
     "$@"
 }
 
-bw "$@"
+if ! declare -f init_logger >/dev/null 2>&1; then
+  # logging.sh should already be sourced by now.
+  # This is primarily present to provide shellcheck function definitions.
+  #
+  # shellcheck source=../../../../vendor/bash-logger/logging.sh
+  . "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
+
+  init_logger --name "$(basename "$0"):core::bw()"
+fi
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  core::bw "$@"
+fi

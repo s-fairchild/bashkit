@@ -108,7 +108,7 @@ idioms directly, not the lowest-common-denominator POSIX subset.
   helper.
 * Every sourced lib file guards against double-inclusion with a `declare -r
   __vendor_bashkit_lib_<name>_sourced="true"` (or, for the shared contract/getopts helper file,
-  `__bashkit_core_sourced`) at the top — **do not rename these without updating every call
+  `__BASHKIT_CORE_CONTRACT_UTILS_SOURCED`) at the top — **do not rename these without updating every call
   site**: they're checked by every consumer across the parent repo's `hack/lib/*` and
   `hack/bin/*` before sourcing this file, so a rename breaks every one of those call sites unless
   they're all updated together (see `CLAUDE.md` "Critical: paths are relative to the

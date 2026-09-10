@@ -6,8 +6,8 @@
 
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
-declare -r __vendor_bashkit_utils_coreos_installer_sourced="true"
-declare -r __INSTALLER_WORKDIR="/data"
+readonly __BASHKIT_BIN_COREOS_INSTALLER_SOURCED="true"
+readonly __INSTALLER_WORKDIR="/data"
 
 # usage_coreos-installer()
 #
@@ -52,7 +52,7 @@ USAGE
 #   Whatever the containerized coreos-installer writes.
 # Returns:
 #   The exit status of `podman run`.
-coreos-installer() {
+core::coreos-installer() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local -a secrets=()
@@ -115,20 +115,16 @@ coreos-installer() {
     "$@"
 }
 
-if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
-  declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../bash-logger-adapter/adapter.sh"
-  [[ -f "${__bash_logger_adapter_path}" ]] || { printf '%s\n' "failed to find file: ${__bash_logger_adapter_path}" >&2; exit 1; }
-  # shellcheck source=../../../bash-logger-adapter/adapter.sh
-  . "${__bash_logger_adapter_path}"
-  unset __bash_logger_adapter_path
+if ! declare -f init_logger >/dev/null 2>&1; then
+  # logging.sh should already be sourced by now.
+  # This is primarily present to provide shellcheck function definitions.
+  #
+  # shellcheck source=../../../../vendor/bash-logger/logging.sh
+  . "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
+
+  init_logger --name "$(basename "$0"):core::coreos-installer()"
 fi
 
-if [[ "${__vendor_bashkit_local_lib_bashkit_options_operands_utils_sourced:-}" != "true" ]]; then
-  declare __vendor_bashkit_local_lib_bashkit_options_operands_utils="${BASH_SOURCE[0]%/*}/../lib/bashkit/options-operands-utils.sh"
-  [[ -f "${__vendor_bashkit_local_lib_bashkit_options_operands_utils}" ]] || { printf '%s\n' "failed to find file: ${__vendor_bashkit_local_lib_bashkit_options_operands_utils}" >&2; exit 1; }
-  # shellcheck source=../lib/bashkit/options-operands-utils.sh
-  . "${__vendor_bashkit_local_lib_bashkit_options_operands_utils}"
-  unset __vendor_bashkit_local_lib_bashkit_options_operands_utils
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  core::coreos-installer "$@"
 fi
-
-coreos-installer "$@"

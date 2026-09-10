@@ -5,7 +5,16 @@
 # core::with_xtrace_suppressed, and a stack-trace helper used when a
 # contract check fails.
 
-declare -r __bashkit_core_sourced="true"
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
+
+readonly __BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED="true"
+
+readonly BOOLEAN_TRUE="true"
+readonly BOOLEAN_FALSE="false"
+readonly BOOLEAN_ON="on"
+readonly BOOLEAN_OFF="off"
+readonly BOOLEAN_YES="yes"
+readonly BOOLEAN_NO="no"
 
 # core::require_operands(count "$@")
 #
@@ -34,13 +43,13 @@ declare -r __bashkit_core_sourced="true"
 # Returns:
 #   1 if any of the first <count> operands is unset; 0 otherwise.
 core::require_operands() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local -ri count="$1"; shift
   local -i i
   for (( i = 1; i <= count; i++ )); do
     if ! [[ -v "${i}" ]]; then
-      error "\$${i} ${ERROR_OPERAND_REQUIRED}"
+      log_error "\$${i} ${ERROR_OPERAND_REQUIRED}"
       core::print_stack_trace
       return 1
     fi
@@ -67,9 +76,9 @@ core::require_operands() {
 #   Always 0.
 core::print_stack_trace() {
   local -i i
-  error "Stack trace (most recent call first):"
+  log_error "Stack trace (most recent call first):"
   for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
-    error "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
+    log_error "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
   done
 }
 
@@ -93,14 +102,30 @@ core::print_stack_trace() {
 # Returns:
 #   1 if the flag is a duplicate; 0 otherwise.
 core::is_option_arg_dup() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 2 "$@" || return 1
   local -r opt="$1"
   local -r opt_arg="$2"
 
   if [[ -n "${opt_arg}" ]]; then
-    error "-${opt} ${opt_arg} ${ERROR_OPTION_ARG_DUP}"
+    log_error "-${opt} ${opt_arg} ${ERROR_OPTION_ARG_DUP}"
+    core::print_stack_trace
+    return 1
+  fi
+}
+
+core::is_boolean() {
+  core::require_operands 1 "$@" || return 1
+  local bool="$1"
+  readonly bool="${bool,,}"
+
+  local boolean_values="${BOOLEAN_TRUE}|${BOOLEAN_FALSE}|${BOOLEAN_ON}|${BOOLEAN_OFF}"
+  boolean_values+="|${BOOLEAN_YES}|${BOOLEAN_NO}"
+  readonly boolean_values
+
+  if ! [[ "$bool" =~ ^($boolean_values)$ ]]; then
+    log_error "${1} must match regex: ${boolean_values}"
     core::print_stack_trace
     return 1
   fi
@@ -129,7 +154,7 @@ core::is_option_arg_dup() {
 # Returns:
 #   Always 0 for "save"/"restore"; exits fatally on an unknown mode.
 core::with_xtrace_suppressed() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 2 "$@" || return 1
   local -r mode="$1"
@@ -153,15 +178,39 @@ core::with_xtrace_suppressed() {
       fi
       ;;
     *)
-      fatal "${ERROR_OPTION_UNKNOWN}: ${mode}"
+      log_fatal "${ERROR_OPTION_UNKNOWN}: ${mode}"
       ;;
   esac
 }
 
-if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
-  declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../../../bash-logger-adapter/adapter.sh"
-  [[ -f "${__bash_logger_adapter_path}" ]] || { printf '%s\n' "failed to find file: ${__bash_logger_adapter_path}" >&2; exit 1; }
-  # shellcheck source=../../../../../bash-logger-adapter/adapter.sh
-  . "${__bash_logger_adapter_path}"
-  unset __bash_logger_adapter_path
+# echo is intentionally used here in-case the logging submodule is unloaded
+core::init_git_submodules_error() {
+  f="${1:-}"
+  if [[ -n "$f" ]]; then
+    echo "f=\$1 positional argument must be provided."
+    return 1
+  fi
+
+  if [[ ! -f "${f}" ]]; then
+    # local msg="error: ${f} not found. "
+    local msg="${ERROR_FILE_NOT_FOUND}: ${f} "
+    msg+="Run: git submodule update --init --recursive"
+    echo "${msg}" >&2
+    return 1
+  fi
+
+  return 0
+}
+
+if ! declare -f init_logger >/dev/null 2>&1; then
+  logging_sh="${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
+  core::init_git_submodules_error "$logging_sh"
+  # logging.sh should already be sourced by now.
+  # This is primarily present to provide shellcheck function definitions.
+  #
+  # shellcheck source=../../../../../bash-logger/logging.sh
+  . "$logging_sh"
+  unset logging_sh
+
+  init_logger --name "$(basename "$0")"
 fi

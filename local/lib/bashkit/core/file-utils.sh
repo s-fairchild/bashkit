@@ -3,8 +3,19 @@
 # File-reading helpers: read a file (or stdin) into memory, with or without
 # preserving trailing newlines, and parse a file's extension.
 
-declare -r __vendor_bashkit_lib_file_utils_sourced="true"
-declare -r __error_no_file="a file must be provided to read into memory."
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
+
+readonly __BASHKIT_LIB_CORE_FILE_UTILS_SOURCED="true"
+readonly __bashkit_core_file_utils_error_file_not_found="a file must be provided to read into memory."
+if ! declare -f init_logger >/dev/null 2>&1; then
+  # logging.sh should already be sourced by now.
+  # This is primarily present to provide shellcheck function definitions.
+  #
+  # shellcheck source=../../../../../bash-logger/logging.sh
+  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
+
+  init_logger --name "$(basename "$0")"
+fi
 
 # read_file_builtin([file])
 #
@@ -13,7 +24,7 @@ declare -r __error_no_file="a file must be provided to read into memory."
 # read_file_preserve_newlines for a variant that keeps them).
 #
 # Globals:
-#   __error_no_file
+#   __bashkit_core_file_utils_error_file_not_found
 # Arguments:
 #   $1   Optional path to the file to read. Read from stdin if omitted and
 #        stdin is not a terminal.
@@ -21,7 +32,7 @@ declare -r __error_no_file="a file must be provided to read into memory."
 #   The file's contents (trailing newlines stripped) on stdout.
 # Returns:
 #   1 if no file/stdin was provided, or if the read result is empty.
-read_file_builtin() {
+core::file_read_builtin() {
   debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local input
@@ -30,7 +41,7 @@ read_file_builtin() {
   elif (( $# )); then
     input="$*"
   else
-    error "${ERROR_ARG_REQUIRED}: ${__error_no_file}"
+    log_error "${ERROR_ARG_REQUIRED}: ${__bashkit_core_file_utils_error_file_not_found}"
     return 1
   fi
   log_sensitive "$(declare -p input)"
@@ -40,7 +51,7 @@ read_file_builtin() {
   log_sensitive "$(declare -p output)"
 
   if [[ -z "${output}" ]]; then
-    error "failed to read file ${1} into memory."
+    log_error "failed to read file ${1} into memory."
     return 1
   fi
 
@@ -53,7 +64,7 @@ read_file_builtin() {
 # read_file_builtin).
 #
 # Globals:
-#   __error_no_file
+#   __bashkit_core_file_utils_error_file_not_found
 # Arguments:
 #   $1   Optional path to the file to read. Read from stdin if omitted and
 #        stdin is not a terminal.
@@ -61,8 +72,8 @@ read_file_builtin() {
 #   The file's contents (newlines preserved) on stdout.
 # Returns:
 #   1 if no file/stdin was provided, or if the read result is empty.
-read_file_preserve_newlines() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+core::file_read_preserve_newlines() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local input
   if [[ -t 0 ]]; then
@@ -70,7 +81,7 @@ read_file_preserve_newlines() {
   elif (( $# )); then
     input="$*"
   else
-    error "${ERROR_ARG_REQUIRED}: ${__error_no_file}"
+    log_error "${ERROR_ARG_REQUIRED}: ${__bashkit_core_file_utils_error_file_not_found}"
     return 1
   fi
   log_sensitive "$(declare -p input)"
@@ -80,7 +91,7 @@ read_file_preserve_newlines() {
   log_sensitive "$(declare -p output)"
 
   if [[ -z "${output}" ]]; then
-    error "failed to read file ${1} into memory."
+    log_error "failed to read file ${1} into memory."
     return 1
   fi
 
@@ -93,7 +104,7 @@ read_file_preserve_newlines() {
 # in its basename).
 #
 # Globals:
-#   __error_no_file
+#   __bashkit_core_file_utils_error_file_not_found
 # Arguments:
 #   $1   Optional file path. Read from stdin if omitted and stdin is not a
 #        terminal.
@@ -101,8 +112,8 @@ read_file_preserve_newlines() {
 #   The parsed extension on stdout.
 # Returns:
 #   1 if no file/stdin was provided, or if no extension could be parsed.
-parse_file_extension() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+core::file_parse_extension() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local input
   if [[ -t 0 ]]; then
@@ -110,7 +121,7 @@ parse_file_extension() {
   elif (( $# )); then
     input="$*"
   else
-    error "${ERROR_ARG_REQUIRED}: ${__error_no_file}"
+    log_error "${ERROR_ARG_REQUIRED}: ${__bashkit_core_file_utils_error_file_not_found}"
     return 1
   fi
   # DEBUG-level logging should be fine as this *should* only be a file
@@ -125,17 +136,9 @@ parse_file_extension() {
   log_sensitive "$(declare -p output)"
 
   if [[ -z "${output}" ]]; then
-    error "failed to parse checksum value."
+    log_error "failed to parse checksum value."
     return 1
   fi
 
   printf "%s" "${output}"
 }
-
-if [[ "${__bash_logger_adapter_sourced:-}" != "true" ]]; then
-  declare __bash_logger_adapter_path="${BASH_SOURCE[0]%/*}/../../../../bash-logger-adapter/adapter.sh"
-  [[ -f "${__bash_logger_adapter_path}" ]] || { printf '%s\n' "failed to find file: ${__bash_logger_adapter_path}" >&2; exit 1; }
-  # shellcheck source=../../../../bash-logger-adapter/adapter.sh
-  . "${__bash_logger_adapter_path}"
-  unset __bash_logger_adapter_path
-fi
