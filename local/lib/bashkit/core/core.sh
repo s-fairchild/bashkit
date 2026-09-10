@@ -17,4 +17,3 @@ if [[ "${__BASHKIT_LIB_CORE_FILE_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=file-utils.sh
   . "${BASH_SOURCE[0]%/*}/file-utils.sh"
 fi
-

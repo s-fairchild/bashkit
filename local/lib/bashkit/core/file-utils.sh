@@ -7,15 +7,6 @@
 
 readonly __BASHKIT_LIB_CORE_FILE_UTILS_SOURCED="true"
 readonly __bashkit_core_file_utils_error_file_not_found="a file must be provided to read into memory."
-if ! declare -f init_logger >/dev/null 2>&1; then
-  # logging.sh should already be sourced by now.
-  # This is primarily present to provide shellcheck function definitions.
-  #
-  # shellcheck source=../../../../../bash-logger/logging.sh
-  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
-
-  init_logger --name "$(basename "$0")"
-fi
 
 # read_file_builtin([file])
 #
@@ -142,3 +133,13 @@ core::file_parse_extension() {
 
   printf "%s" "${output}"
 }
+
+if ! declare -f init_logger >/dev/null 2>&1; then
+  # logging.sh should already be sourced by now.
+  # This is primarily present to provide shellcheck function definitions.
+  #
+  # shellcheck source=../../../../../bash-logger/logging.sh
+  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
+
+  init_logger --name "$(basename "$0")"
+fi

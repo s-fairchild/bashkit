@@ -5,10 +5,6 @@
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
 readonly __BASHKIT_LIB_VIRSH_DOMAIN_SOURCED="true"
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
 
 # virsh_dom_define(xml_file)
 #
@@ -177,3 +173,8 @@ virsh::domain_is_active() {
   core::require_operands 1 "$@" || return 1
   [[ "$(virsh domstate "$1" 2> /dev/null)" == "running" ]]
 }
+
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+fi
