@@ -6,7 +6,7 @@
 
 readonly __BASHKIT_LIB_VIRSH_DOMAIN_SOURCED="true"
 
-# virsh_dom_define(xml_file)
+# virsh::domain_define(xml_file)
 #
 # Persistently defines a domain from an XML file (or "/dev/stdin" for XML
 # piped in) without starting it. Mirrors `virsh define`.
@@ -26,7 +26,7 @@ virsh::domain_define() {
   virsh define "$1"
 }
 
-# virsh_dom_undefine(name)
+# virsh::domain_undefine(name)
 #
 # Removes a persistent domain definition. Mirrors `virsh undefine`. Does
 # not touch a running domain's live state -- destroy it first if it is
@@ -47,14 +47,14 @@ virsh::domain_undefine() {
   virsh undefine "$1"
 }
 
-# virsh_dom_create(xml_file)
+# virsh::domain_create(xml_file)
 #
 # Creates and starts a transient domain directly from an XML file (or
 # "/dev/stdin"). The domain is never written to persistent libvirt config,
 # and its effective XML (including anything merged in by the caller before
-# this is invoked) disappears entirely on virsh_dom_destroy. Use this
-# instead of virsh_dom_define + virsh_dom_start whenever the XML being
-# passed in must not be persisted to disk. Mirrors `virsh create`.
+# this is invoked) disappears entirely on virsh::domain_destroy. Use this
+# instead of virsh::domain_define + virsh::domain_start whenever the XML
+# being passed in must not be persisted to disk. Mirrors `virsh create`.
 #
 # Globals:
 #   None.
@@ -71,7 +71,7 @@ virsh::domain_create() {
   virsh create "$1"
 }
 
-# virsh_dom_start(name)
+# virsh::domain_start(name)
 #
 # Starts an already-defined (persistent) domain. Mirrors `virsh start`.
 #
@@ -90,10 +90,10 @@ virsh::domain_start() {
   virsh start "$1"
 }
 
-# virsh_dom_destroy(name)
+# virsh::domain_destroy(name)
 #
 # Forcibly stops a running domain (equivalent to pulling the power). For a
-# transient domain created via virsh_dom_create, this also removes its
+# transient domain created via virsh::domain_create, this also removes its
 # in-memory definition entirely -- including any secret material that was
 # merged into its XML at create time. Mirrors `virsh destroy`.
 #
@@ -112,7 +112,7 @@ virsh::domain_destroy() {
   virsh destroy "$1"
 }
 
-# virsh_dom_autostart(name)
+# virsh::domain_autostart(name)
 #
 # Marks a persistent domain to autostart on host boot. Mirrors
 # `virsh autostart`. Not valid for transient domains -- define the domain
@@ -133,7 +133,7 @@ virsh::domain_autostart() {
   virsh autostart "$1"
 }
 
-# virsh_dom_is_defined(name)
+# virsh::domain_is_defined(name)
 #
 # Returns 0 if a domain with the given name has a persistent or live
 # definition, non-zero otherwise. Thin wrapper around `virsh dominfo` for
@@ -154,7 +154,7 @@ virsh::domain_is_defined() {
   virsh dominfo "$1" > /dev/null 2>&1
 }
 
-# virsh_dom_is_active(name)
+# virsh::domain_is_active(name)
 #
 # Returns 0 if the domain is currently running, non-zero otherwise. Thin
 # wrapper around `virsh domstate` for use in conditional expressions.

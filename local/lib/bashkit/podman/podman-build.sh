@@ -20,7 +20,7 @@ readonly PODMAN_BUILD_REMOTE_REGISTRY="docker.io"
 # shellcheck disable=SC2034
 readonly PODMAN_BUILD_IMAGE_TAG_LATEST="latest"
 
-# podman_build()
+# podman::build(build_opts ctx_dir)
 #
 # Appends default build options (--format=docker, --build-arg=BUILD_THREADS)
 # to the caller-supplied options array, then runs `podman build` with those
@@ -61,7 +61,7 @@ podman::build() {
     "${ctx_dir}"
 }
 
-# add_build_arg_file()
+# podman::build_add_arg_file(opts)
 #
 # Appends a --build-arg-file option to the options array when ${ARGFILE_CONF}
 # exists in the build context directory.  Logs a warning and returns without
@@ -93,7 +93,7 @@ podman::build_add_arg_file() {
   opts+=("${build_arg_file}")
 }
 
-# load_podman_build_env()
+# podman::build_load_env(image build_args_out build_contexts_out image_tag_primary_out)
 #
 # Sources the per-image .env file and populates build_args_out, build_contexts_out,
 # and image_tag_primary_out from the variables it defines (BUILD_ARGS, BUILD_CONTEXTS,
@@ -161,7 +161,7 @@ podman::build_load_env() {
   fi
 }
 
-# add_build_primary_tag()
+# podman::build_add_primary_tag(opts local_repo image tag)
 #
 # Appends a --tag option in the form --tag=<local_repo>/<image>:<tag> to the
 # options array.
@@ -190,7 +190,7 @@ podman::build_add_primary_tag() {
   opts+=("${option_image_tag}")
 }
 
-# add_build_options()
+# podman::build_add_options(opts additional_opts option)
 #
 # Iterates over an associative array of key=value pairs and appends
 # <option>=<key>=<value> entries to the options array.
@@ -219,9 +219,9 @@ podman::build_add_options() {
   done
 }
 
-# add_build_args()
+# podman::build_add_args(opts build_args)
 #
-# Convenience wrapper around add_build_options for --build-arg options.
+# Convenience wrapper around podman::build_add_options for --build-arg options.
 #
 # TODO separate this into its own build.sh library file
 #
@@ -236,11 +236,9 @@ podman::build_add_args() {
     "${opt_build_arg}"
 }
 
-# add_build_additional_contexts()
+# podman::build_add_additional_contexts(opts build_contexts)
 #
-# Convenience wrapper around add_build_options for --build-context options.
-#
-# TODO separate this into its own build.sh library file
+# Convenience wrapper around podman::build_add_options for --build-context options.
 #
 # Arguments:
 #   $1   Nameref; array to append to.
@@ -253,7 +251,7 @@ podman::build_add_additional_contexts() {
     "${opt_build_context}"
 }
 
-# add_container_files_ordered()
+# podman::build_add_container_files_ordered(opts ctx)
 #
 # Discovers all files matching Containerfile* under the given context directory,
 # sorts them by version, and appends --file=<path> options to the options array.
@@ -293,7 +291,7 @@ podman::build_add_container_files_ordered() {
   )
 }
 
-# build_context_get()
+# podman::build_context_get(opts ctx)
 #
 # Pops the last element of the options array as the build context directory,
 # validates that it exists, and assigns it to the ctx nameref.
@@ -317,7 +315,7 @@ podman::build_context_get() {
   log_info "Container build context directory: ${ctx}"
 }
 
-# log_image_tags()
+# podman::log_image_tags(tags)
 #
 # Logs each tag in the provided array at LOG_LEVEL_INFO.
 #
@@ -335,11 +333,11 @@ podman::log_image_tags() {
   done
 }
 
-# podman_build_with_options()
+# podman::build_with_options(opts image context)
 #
 # Orchestrates a full podman build: loads the per-image env file, adds build
 # args, build contexts, the primary tag, Containerfiles, and an optional
-# build-arg-file, then delegates to podman_build().
+# build-arg-file, then delegates to podman::build().
 #
 # Arguments:
 #   $1   Nameref; caller-supplied array of additional podman build options.

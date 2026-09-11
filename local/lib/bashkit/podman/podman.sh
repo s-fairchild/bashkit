@@ -1,7 +1,6 @@
-# hack/lib/podman/podman.sh
+# shellcheck shell=bash
 #
 # Umbrella loader for the podman-container/podman-secret/podman-volume/podman-build library files.
-# shellcheck shell=bash
 
 readonly __LIB_PODMAN_SOURCED="true"
 

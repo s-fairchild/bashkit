@@ -22,7 +22,7 @@ readonly __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART="Autostart"
 ### Globals End ###
 ###################
 
-# virsh_net_define(name [description])
+# virsh::net_define(name [description])
 #
 # Persistently defines a libvirt network from a minimal generated XML
 # document (name + optional description). Mirrors `virsh net-define`.
@@ -57,7 +57,7 @@ virsh::net_define() {
   virsh net-define "${network_xml_file}"
 }
 
-# virsh_net_activate(name)
+# virsh::net_activate(name)
 #
 # Starts (activates) a defined network. Mirrors `virsh net-start`.
 #
@@ -76,7 +76,7 @@ virsh::net_activate() {
   virsh net-start "$1"
 }
 
-# virsh_net_destroy(name)
+# virsh::net_destroy(name)
 #
 # Stops (deactivates) a running network. Mirrors `virsh net-destroy`.
 #
@@ -95,7 +95,7 @@ virsh::net_destroy() {
   virsh net-destroy "$1"
 }
 
-# virsh_net_is_defined(name)
+# virsh::net_is_defined(name)
 #
 # Returns 0 if a network with the given name has a persistent definition,
 # non-zero otherwise. Thin wrapper around `virsh net-uuid` for use in
@@ -116,7 +116,7 @@ virsh::net_is_defined() {
   virsh net-uuid "$1" > /dev/null 2>&1
 }
 
-# virsh_net_is_active(name)
+# virsh::net_is_active(name)
 #
 # Returns 0 if the network is currently active, non-zero otherwise. Thin
 # wrapper around `virsh net-info` for use in conditional expressions.
@@ -133,10 +133,10 @@ virsh::net_is_active() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
-  virsh_net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_ACTIVE}"
+  virsh::net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_ACTIVE}"
 }
 
-# virsh_net_is_persistent(name)
+# virsh::net_is_persistent(name)
 #
 # Returns 0 if the network has a persistent definition, non-zero
 # otherwise. Thin wrapper around `virsh net-info` for use in conditional
@@ -154,10 +154,10 @@ virsh::net_is_persistent() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
-  virsh_net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT}"
+  virsh::net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT}"
 }
 
-# virsh_net_is_autostart(name)
+# virsh::net_is_autostart(name)
 #
 # Returns 0 if the network is marked to autostart, non-zero otherwise.
 # Thin wrapper around `virsh net-info` for use in conditional expressions.
@@ -174,10 +174,10 @@ virsh::net_is_autostart() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 1 "$@" || return 1
-  virsh_net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART}"
+  virsh::net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART}"
 }
 
-# virsh_net_autostart(name)
+# virsh::net_autostart(name)
 #
 # Marks a defined network to autostart on host boot. Mirrors
 # `virsh net-autostart`.
@@ -197,7 +197,7 @@ virsh::net_autostart() {
   virsh net-autostart "$1"
 }
 
-# virsh_net_parse_info(network search)
+# virsh::net_parse_info(network search)
 #
 # Greps `virsh net-info`'s output for the given field name and returns 0
 # if its value is "yes".

@@ -115,6 +115,19 @@ core::is_option_arg_dup() {
   fi
 }
 
+# core::is_boolean(value)
+#
+# Validates that a string is a recognized boolean spelling (case-insensitive):
+# true/false, on/off, or yes/no. Logs an error and a stack trace if not.
+#
+# Globals:
+#   BOOLEAN_TRUE, BOOLEAN_FALSE, BOOLEAN_ON, BOOLEAN_OFF, BOOLEAN_YES, BOOLEAN_NO
+# Arguments:
+#   $1   String to validate.
+# Outputs:
+#   An error and stack trace if the value doesn't match a recognized spelling.
+# Returns:
+#   1 if the value is not a recognized boolean spelling; 0 otherwise.
 core::is_boolean() {
   core::require_operands 1 "$@" || return 1
   local bool="$1"
@@ -183,6 +196,20 @@ core::with_xtrace_suppressed() {
   esac
 }
 
+# core::init_git_submodules_error(file)
+#
+# Checks that a required file (expected to come from a git submodule) exists,
+# for use before sourcing it. Uses `echo` rather than the logging API, since
+# this guards the case where the logging submodule itself hasn't been
+# initialized yet.
+#
+# Arguments:
+#   $1   Path to the file to check.
+# Outputs:
+#   An error to stderr naming the missing file and the fix (`git submodule
+#   update --init --recursive`) if $1 is missing or does not exist.
+# Returns:
+#   1 if $1 is unset/empty or does not exist as a file; 0 otherwise.
 # echo is intentionally used here in-case the logging submodule is unloaded
 core::init_git_submodules_error() {
   f="${1:-}"

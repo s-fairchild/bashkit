@@ -4,7 +4,7 @@
 
 readonly __BASHKIT_LIB_PODMAN_VOLUME_SOURCED="true"
 
-# podman_volume_exists()
+# podman::volume_exists(name)
 #
 # Returns 0 if a podman volume with the given name exists, non-zero otherwise.
 #
@@ -23,7 +23,7 @@ podman::volume_exists() {
   fi
 }
 
-# podman_volume_create()
+# podman::volume_create(name)
 #
 # Creates a podman volume if it doesn't already exist, labeled with the current
 # working directory's basename as its project.
@@ -56,7 +56,7 @@ podman::volume_create() {
   fi
 }
 
-# podman_volume_export_untar_stdout()
+# podman::volume_export_untar_stdout(name target)
 #
 # Exports a podman volume as a tar stream and extracts a single target path from it
 # to stdout, without ever writing the volume's tar archive to disk.

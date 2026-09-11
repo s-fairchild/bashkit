@@ -10,7 +10,7 @@ readonly __BASHKIT_LIB_PODMAN_CONTAINER_USER="podman"
 readonly __BASHKIT_LIB_PODMAN_CONTAINER_VOLUME_GRAPHROOT_USER_PODMAN="graphroot-user-podman"
 readonly __BASHKIT_LIB_PODMAN_CONTAINER_VOLUME_TARGET_GRAPHROOT_USER_PODMAN="/home/podman/.local/share/containers/storage"
 
-# podman_container()
+# podman::container(args...)
 #
 # Runs `podman <args...>` inside a registry.redhat.io/ubi10/podman container, with the
 # graphroot-user-podman volume mounted so the nested podman shares the host's rootless

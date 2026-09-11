@@ -11,11 +11,11 @@ if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi
 
-# virsh_pool_define(xml_file)
+# virsh::pool_define(xml_file)
 #
 # Persistently defines a storage pool from an XML file (or "/dev/stdin").
 # Mirrors `virsh pool-define`. The pool's target directory is not created
-# by this call -- see virsh_pool_build().
+# by this call -- see virsh::pool_build().
 #
 # Globals:
 #   None.
@@ -32,7 +32,7 @@ virsh::pool_define() {
   virsh pool-define "$1"
 }
 
-# virsh_pool_build(name)
+# virsh::pool_build(name)
 #
 # Creates the on-disk target directory for a defined pool. Mirrors
 # `virsh pool-build`. For fs/disk/logical pools -- the only types
@@ -70,7 +70,7 @@ virsh::pool_build() {
   esac
 }
 
-# virsh_pool_start(name)
+# virsh::pool_start(name)
 #
 # Starts (activates) a defined storage pool. Mirrors `virsh pool-start`.
 #
@@ -89,7 +89,7 @@ virsh::pool_start() {
   virsh pool-start "$1"
 }
 
-# virsh_pool_autostart(name)
+# virsh::pool_autostart(name)
 #
 # Marks a defined storage pool to autostart on host boot. Mirrors
 # `virsh pool-autostart`.
@@ -109,7 +109,7 @@ virsh::pool_autostart() {
   virsh pool-autostart "$1"
 }
 
-# virsh_pool_is_defined(name)
+# virsh::pool_is_defined(name)
 #
 # Returns 0 if a storage pool with the given name has a persistent
 # definition, non-zero otherwise. Thin wrapper around `virsh pool-uuid`
@@ -130,7 +130,7 @@ virsh::pool_is_defined() {
   virsh pool-uuid "$1" > /dev/null 2>&1
 }
 
-# virsh_pool_is_active(name)
+# virsh::pool_is_active(name)
 #
 # Returns 0 if the storage pool is currently running, non-zero otherwise.
 # Thin wrapper around `virsh pool-info` for use in conditional
@@ -160,7 +160,7 @@ virsh::pool_is_active() {
   grep -q '^State: *running' <<< "${info}"
 }
 
-# virsh_vol_create(pool xml_file)
+# virsh::vol_create(pool xml_file)
 #
 # Creates a storage volume within a pool from an XML file (or
 # "/dev/stdin"). Mirrors `virsh vol-create`. The pool must already be
@@ -185,7 +185,7 @@ virsh::vol_create() {
   virsh vol-create "${pool}" "${xml_file}"
 }
 
-# virsh_vol_is_present(pool vol)
+# virsh::vol_is_present(pool vol)
 #
 # Returns 0 if a volume with the given name exists within the given pool,
 # non-zero otherwise. Thin wrapper around `virsh vol-info` for use in

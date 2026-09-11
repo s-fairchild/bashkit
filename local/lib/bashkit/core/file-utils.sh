@@ -8,11 +8,11 @@
 readonly __BASHKIT_LIB_CORE_FILE_UTILS_SOURCED="true"
 readonly __bashkit_core_file_utils_error_file_not_found="a file must be provided to read into memory."
 
-# read_file_builtin([file])
+# core::file_read_builtin([file])
 #
 # Reads a file into memory using the `$(<file)` builtin, or reads stdin if
 # it is not a terminal. Strips trailing newlines (see
-# read_file_preserve_newlines for a variant that keeps them).
+# core::file_read_preserve_newlines for a variant that keeps them).
 #
 # Globals:
 #   __bashkit_core_file_utils_error_file_not_found
@@ -49,10 +49,10 @@ core::file_read_builtin() {
   printf "%s" "${output}"
 }
 
-# read_file_preserve_newlines([file])
+# core::file_read_preserve_newlines([file])
 #
 # Reads a file into memory, preserving trailing newlines (unlike
-# read_file_builtin).
+# core::file_read_builtin).
 #
 # Globals:
 #   __bashkit_core_file_utils_error_file_not_found
@@ -89,7 +89,7 @@ core::file_read_preserve_newlines() {
   printf "%s" "${output}"
 }
 
-# parse_file_extension([file])
+# core::file_parse_extension([file])
 #
 # Parses the extension off a file path (the substring after the final `.`
 # in its basename).

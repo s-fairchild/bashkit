@@ -7,7 +7,7 @@ readonly __BASHKIT_LIB_PODMAN_SECRET_SOURCED="true"
 readonly __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME="secrets/secrets.json"
 readonly __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME="secrets/filedriver/secretsdata.json"
 
-# podman_secret_exists()
+# podman::secret_exists(name)
 #
 # Returns 0 if a podman secret with the given name or ID exists, non-zero otherwise.
 # Thin wrapper around `podman secret exists` for use in conditional expressions.
@@ -23,7 +23,7 @@ podman::secret_exists() {
 
 # podman::usage_secret_create_replace_from_stdin()
 #
-# Prints podman_secret_create_replace_from_stdin()'s usage message to stderr.
+# Prints podman::secret_create_replace_from_stdin()'s usage message to stderr.
 podman::usage_secret_create_replace_from_stdin() {
   cat <<USAGE >&2
 Usage: podman_secret_create_replace_from_stdin [-l label]... [-h] secret_name < input
@@ -39,7 +39,7 @@ Options:
 USAGE
 }
 
-# podman_secret_create_replace_from_stdin()
+# podman::secret_create_replace_from_stdin([-l label]... secret_name)
 #
 # Creates or replaces a podman secret from stdin using `podman secret create --replace`.
 # Reads secret data from stdin; aborts if stdin is empty.
@@ -106,7 +106,7 @@ podman::secret_create_replace_from_stdin() {
     || log_fatal "failed to create podman secret: ${secret_name}"
 }
 
-# podman_secret_showsecret()
+# podman::secret_showsecret(name)
 #
 # Prints the raw secret data for a named podman secret to stdout.
 # Uses `podman secret inspect --showsecret` with the SecretData Go template field.
@@ -133,7 +133,7 @@ podman::secret_showsecret() {
 
 # podman::usage_secret_create_from_file()
 #
-# Prints podman_secret_create_from_file()'s usage message to stderr.
+# Prints podman::secret_create_from_file()'s usage message to stderr.
 podman::usage_secret_create_from_file() {
   cat <<USAGE >&2
 Usage: podman_secret_create_from_file [-l label]... [-h] src_files_nameref
@@ -154,7 +154,7 @@ Arguments:
 USAGE
 }
 
-# podman_secret_create_from_file()
+# podman::secret_create_from_file([-l label]... src_files_nameref)
 #
 # Creates a podman secret for each file path or glob in the src_files array.
 # The secret name is the basename of the source file. Secrets that already exist
@@ -235,7 +235,7 @@ podman::secret_create_from_file() {
   done
 }
 
-# podman_secret_gen_file_secretsdata()
+# podman::secret_gen_file_secretsdata()
 #
 # Generates a secretsdata.json blob in the format expected by the podman file
 # secret driver. Reads a whitespace-separated list of secret names or IDs from
@@ -267,7 +267,7 @@ podman::secret_gen_file_secretsdata() {
     | jq -r 'map({(.ID): .SecretData}) | add'
 }
 
-# podman_secret_filter_by_label()
+# podman::secret_filter_by_label(label value)
 #
 # Prints the names of all podman secrets carrying the given label key/value pair.
 # Inspects every existing secret and selects those whose Spec.Labels[label] equals
