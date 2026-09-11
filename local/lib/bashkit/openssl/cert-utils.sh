@@ -3,6 +3,8 @@
 # ECC private-key and self-signed-certificate generation helpers built on
 # openssl: openssl::private_key_gen, openssl::self_signed_cert_gen.
 
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
+
 readonly __BASHKIT_LIB_OPENSSL_CERT_UTILS_SOURCED="true"
 
 # openssl::private_key_gen()

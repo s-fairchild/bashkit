@@ -6,7 +6,6 @@
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
 readonly __BASHKIT_LIB_CORE_FILE_UTILS_SOURCED="true"
-readonly __bashkit_core_file_utils_error_file_not_found="a file must be provided to read into memory."
 
 # core::file_read_builtin([file])
 #

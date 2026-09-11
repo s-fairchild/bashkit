@@ -4,6 +4,8 @@
 # graphroot volume mounted so the nested podman shares its storage.
 # shellcheck shell=bash
 
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
+
 readonly __BASHKIT_LIB_PODMAN_CONTAINER_SOURCED="true"
 
 readonly __BASHKIT_LIB_PODMAN_CONTAINER_USER="podman"

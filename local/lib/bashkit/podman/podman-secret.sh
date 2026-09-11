@@ -2,6 +2,8 @@
 #
 # shellcheck shell=bash
 
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
+
 readonly __BASHKIT_LIB_PODMAN_SECRET_SOURCED="true"
 
 readonly __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME="secrets/secrets.json"
