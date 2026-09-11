@@ -4,7 +4,7 @@
 
 readonly __BASHKIT_LIB_CORE_SHA512SUM_UTILS_SOURCED="true"
 
-# sha512sum()
+# core::sha512sum(...)
 #
 # Shadows the coreutils `sha512sum` binary so callers in this tree always go through one
 # call site; delegates every argument straight through.
@@ -19,7 +19,7 @@ core::sha512sum() {
   command sha512sum "$@"
 }
 
-# sha512sum_gen_stdin()
+# core::sha512sum_gen_stdin()
 #
 # Generates a sha512 checksum for stdin.
 #
@@ -38,7 +38,7 @@ core::sha512sum_gen_stdin() {
   cat | core::sha512sum -
 }
 
-# sha512sum_check_stdin()
+# core::sha512sum_check_stdin()
 #
 # Checks a sha512sum-formatted checksum line read from stdin against the referenced file(s).
 #
@@ -64,7 +64,7 @@ core::sha512sum_check_stdin() {
   core::sha512sum "${sha512sum_check_options[@]}" -
 }
 
-# sha512sum_gen()
+# core::sha512sum_gen(input)
 #
 # Generates a sha512 checksum for $1, or stdin when $1 is omitted.
 #
@@ -89,7 +89,7 @@ core::sha512sum_gen() {
   core::sha512sum_gen_stdin <<< "${input}"
 }
 
-# sha512sum_check()
+# core::sha512sum_check(input)
 #
 # Checks a sha512sum-formatted checksum line, from $1 or stdin, against the referenced file(s).
 #
@@ -111,7 +111,7 @@ core::sha512sum_check() {
     return 1
   fi
 
-  if [[ -z "$input" ]]; then
+  if [[ -z "${input}" ]]; then
     log_error "\$1 and/or stdin cannot be empty string."
     return 1
   fi
@@ -119,7 +119,7 @@ core::sha512sum_check() {
   core::sha512sum_check_stdin <<< "${input}"
 }
 
-# checksum_parse_hash()
+# core::checksum_parse_hash(input)
 #
 # Extracts the hash value (first whitespace-delimited field) from a checksum-tool line, e.g.
 # "<hex>  -" from `sha512sum`'s output.
@@ -142,7 +142,7 @@ core::checksum_parse_hash() {
     return 1
   fi
 
-  if [[ -z "$input" ]]; then
+  if [[ -z "${input}" ]]; then
     log_error "\$1 and/or stdin cannot be empty string."
     return 1
   fi
@@ -156,7 +156,7 @@ core::checksum_parse_hash() {
   printf "%s" "${output}"
 }
 
-# checksum_format_verification_hash_sha512()
+# core::checksum_format_verification_hash_sha512(input)
 #
 # Formats a sha512 checksum-tool line (or a raw hex digest passed as $1) as an Ignition
 # "sha512-<hex>" verification.hash value.
@@ -179,10 +179,20 @@ core::checksum_format_verification_hash_sha512() {
     return 1
   fi
 
-  if [[ -z "$input" ]]; then
+  if [[ -z "${input}" ]]; then
     log_error "\$1 and/or stdin cannot be empty string."
     return 1
   fi
 
   printf "sha512-%s" "$(core::checksum_parse_hash "${input}")"
 }
+
+if ! declare -f init_logger >/dev/null 2>&1; then
+  # logging.sh should already be sourced by now.
+  # This is primarily present to provide shellcheck function definitions.
+  #
+  # shellcheck source=../../../../../bash-logger/logging.sh
+  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
+
+  init_logger --name "$(basename "$0")"
+fi

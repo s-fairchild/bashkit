@@ -65,3 +65,13 @@ k3s::token_gen() {
     k3s::token_gen_shasum || log_error "${error_prefix} shasum."
   fi
 }
+
+if ! declare -f init_logger >/dev/null 2>&1; then
+  # logging.sh should already be sourced by now.
+  # This is primarily present to provide shellcheck function definitions.
+  #
+  # shellcheck source=../../../../../bash-logger/logging.sh
+  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
+
+  init_logger --name "$(basename "$0")"
+fi
