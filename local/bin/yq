@@ -32,7 +32,6 @@ core::yq() {
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))" 1>&2
   fi
 
-
   local -a podman_run_options=(
     "-i"
     "--rm"

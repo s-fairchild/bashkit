@@ -9,10 +9,10 @@
 readonly __BASHKIT_BIN_COREOS_INSTALLER_SOURCED="true"
 readonly __INSTALLER_WORKDIR="/data"
 
-# usage_coreos-installer()
+# core::usage_coreos-installer()
 #
 # Prints usage to stderr.
-usage_coreos-installer() {
+core::usage_coreos-installer() {
   cat <<USAGE >&2
 Usage: coreos-installer [-s secret]... [-m mount]... [-h] [installer_arg...]
 
@@ -29,18 +29,16 @@ Remaining arguments are passed through to the coreos-installer container.
 
 Environment:
     PODMAN_LOG_LEVEL       podman run log level. (default: warn)
-    INSTALLER_VOLUME_MOUNT host directory to mount as the container workdir. (default: \$PWD)
 USAGE
 }
 
-# coreos-installer()
+# core::coreos-installer()
 #
 # Runs coreos-installer in a container with image
 # quay.io/coreos/coreos-installer:release.
 #
 # Globals:
-#   PODMAN_LOG_LEVEL        podman run log level (default: warn).
-#   INSTALLER_VOLUME_MOUNT  host directory to mount as the container workdir.
+#   PODMAN_LOG_LEVEL  podman run log level (default: warn).
 # Arguments:
 #   -s <spec>  podman secret spec passed verbatim to `podman run --secret`
 #              (e.g. "my-key,type=mount,target=/data/my-key"). Repeatable.
@@ -62,14 +60,11 @@ core::coreos-installer() {
   local opt OPTIND=1
   while getopts ':s:m:h' opt; do
     case "${opt}" in
-      h) usage_coreos-installer; exit 0 ;;
-      s)
-        secrets+=("${OPTARG}")
-        ;;
-      m)
-        mounts+=("${OPTARG}") ;;
+      h) core::usage_coreos-installer; exit 0 ;;
+      s) secrets+=("${OPTARG}"); ;;
+      m) mounts+=("${OPTARG}"); ;;
       :)
-        usage_coreos-installer
+        core::usage_coreos-installer
         fatal_msg="-${OPTARG} ${ERROR_OPTION_REQUIRED}"
         if ! declare -f log_fatal >/dev/null 2>&1; then
           log_fatal "${fatal_msg}"
@@ -79,7 +74,7 @@ core::coreos-installer() {
         fi
         ;;
       ?)
-        usage_coreos-installer
+        core::usage_coreos-installer
         fatal_msg="-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
         if ! declare -f log_fatal >/dev/null 2>&1; then
           log_fatal "${fatal_msg}"
@@ -103,7 +98,7 @@ core::coreos-installer() {
   )
 
   if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
-    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL:-warn}")
+    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
   fi
 
   local s
