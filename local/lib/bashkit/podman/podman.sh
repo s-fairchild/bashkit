@@ -1,6 +1,6 @@
 # hack/lib/podman/podman.sh
 #
-# Umbrella loader for the podman-container/podman-secret/podman-volume library files.
+# Umbrella loader for the podman-container/podman-secret/podman-volume/podman-build library files.
 # shellcheck shell=bash
 
 readonly __LIB_PODMAN_SOURCED="true"
@@ -18,4 +18,9 @@ fi
 if [[ "${__BASHKIT_LIB_PODMAN_VOLUME_SOURCED:-}" != "true" ]]; then
   # shellcheck source=podman-volume.sh
   . "${BASH_SOURCE[0]%/*}/podman-volume.sh"
+fi
+
+if [[ "${__BASHKIT_LIB_PODMAN_BUILD_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=podman-build.sh
+  . "${BASH_SOURCE[0]%/*}/podman-build.sh"
 fi

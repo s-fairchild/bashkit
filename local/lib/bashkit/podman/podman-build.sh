@@ -2,7 +2,23 @@
 #
 # shellcheck shell=bash
 
-declare -r __BASHKIT_LIB_PODMAN_BUILD_MULTI_STAGE_SOURCED="true"
+readonly __BASHKIT_LIB_PODMAN_BUILD_SOURCED="true"
+readonly ARGFILE_CONF="argfile.conf"
+# Reference: podman-build(1)
+# shellcheck disable=SC2034
+readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE="container-image://"
+# Reference: podman-build(1)
+# shellcheck disable=SC2034
+readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE_DOCKER_IMAGE="docker-image://"
+# Reference: podman-build(1)
+# shellcheck disable=SC2034
+readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE_DOCKER="docker://"
+# shellcheck disable=SC2034
+readonly PODMAN_BUILD_LOCAL_REGISTRY="localhost"
+# shellcheck disable=SC2034
+readonly PODMAN_BUILD_REMOTE_REGISTRY="docker.io"
+# shellcheck disable=SC2034
+readonly PODMAN_BUILD_IMAGE_TAG_LATEST="latest"
 
 # podman_build()
 #
@@ -17,7 +33,7 @@ declare -r __BASHKIT_LIB_PODMAN_BUILD_MULTI_STAGE_SOURCED="true"
 #   Writes `podman build`'s stdout/stderr, plus info/log_debug log lines.
 # Returns:
 #   `podman build`'s exit status.
-podman-build::build() {
+podman::build() {
   local -n build_opts="$1"
   local ctx_dir="$2"
 
@@ -60,7 +76,7 @@ podman-build::build() {
 #   Warns to stderr if the build-arg file is not found.
 # Returns:
 #   0 always (a missing build-arg file is not treated as an error).
-podman-build::add_arg_file() {
+podman::build_add_arg_file() {
   local -n opts="$1"
 
   local -r build_arg_file_value="${context}/${ARGFILE_CONF}"
@@ -94,7 +110,7 @@ podman-build::add_arg_file() {
 #   Writes info/warn/log_debug log lines describing what was loaded.
 # Returns:
 #   Non-zero (via fatal) if the per-image .env file does not exist.
-podman-build::load_env() {
+podman::build_load_env() {
   local -r image="$1"
   local -n build_args_out="$2"
   local -n build_contexts_out="$3"
@@ -159,7 +175,7 @@ podman-build::load_env() {
 #   $4   String; image tag.
 # Outputs:
 #   Writes info/log_debug log lines describing the tag option added.
-podman-build::add_build_primary_tag() {
+podman::build_add_primary_tag() {
   # shellcheck disable=SC2178
   local -n opts="$1"
   local -r local_repo="$2"
@@ -187,7 +203,7 @@ podman-build::add_build_primary_tag() {
 #   $3   String; option prefix (e.g. "--build-arg").
 # Outputs:
 #   Writes info/log_debug log lines for each option added.
-add_build_options() {
+podman::build_add_options() {
   # shellcheck disable=SC2178
   local -n opts="$1"
   local -n additional_opts="$2"
@@ -212,10 +228,10 @@ add_build_options() {
 # Arguments:
 #   $1   Nameref; array to append to.
 #   $2   Nameref; associative array of build-arg key/value pairs.
-podman-build::add_build_args() {
+podman::build_add_args() {
   local -r opt_build_arg="--build-arg"
 
-  podman-build::add_build_options "$1" \
+  podman::build_add_options "$1" \
     "$2" \
     "${opt_build_arg}"
 }
@@ -229,10 +245,10 @@ podman-build::add_build_args() {
 # Arguments:
 #   $1   Nameref; array to append to.
 #   $2   Nameref; associative array of build-context key/value pairs.
-podman-build::add_build_additional_contexts() {
+podman::build_add_additional_contexts() {
   local -r opt_build_context="--build-context"
 
-  podman-build::add_build_options "$1" \
+  podman::build_add_options "$1" \
     "$2" \
     "${opt_build_context}"
 }
@@ -251,7 +267,7 @@ podman-build::add_build_additional_contexts() {
 #   caller already supplied -f/--file options.
 # Returns:
 #   0 always.
-podman-build::add_container_files_ordered() {
+podman::build_add_container_files_ordered() {
   # shellcheck disable=SC2178
   local -n opts="$1"
   local ctx="$2"
@@ -270,8 +286,10 @@ podman-build::add_container_files_ordered() {
   local -r containerfile="Containerfile"
   local -r opt_file="--file"
   mapfile -t -O "${#opts[@]}" "$1" < <(
-    find "${ctx}" -iname "${containerfile}*" -printf "${opt_file}=%p\n" \
-      | sort --sort=version
+    find "${ctx}" \
+      -iname "${containerfile}*" \
+      -printf "${opt_file}=%p\n" \
+    | sort --sort=version
   )
 }
 
@@ -280,8 +298,6 @@ podman-build::add_container_files_ordered() {
 # Pops the last element of the options array as the build context directory,
 # validates that it exists, and assigns it to the ctx nameref.
 #
-# TODO separate this into its own build.sh library file
-#
 # Arguments:
 #   $1   Nameref; array whose last element is the context directory path.
 #   $2   Nameref; string that receives the extracted context directory path.
@@ -289,7 +305,7 @@ podman-build::add_container_files_ordered() {
 #   Writes an log_info log line with the resolved context directory.
 # Returns:
 #   Non-zero (via fatal) if the context directory does not exist.
-build_context_get() {
+podman::build_context_get() {
   # shellcheck disable=SC2178
   local -n opts="$1"
   local -n ctx="$2"
@@ -309,7 +325,7 @@ build_context_get() {
 #   $1   Nameref; array of image tag strings to log.
 # Outputs:
 #   Writes an log_info log line per tag.
-log_image_tags() {
+podman::log_image_tags() {
   local -n tags="$1"
 
   log_info "The image will be tagged with the following:"
@@ -333,7 +349,7 @@ log_image_tags() {
 #   Writes `podman build`'s stdout/stderr, plus info/warn/log_debug log lines.
 # Returns:
 #   `podman build`'s exit status; non-zero (via fatal) on earlier failures.
-podman_build_with_options() {
+podman::build_with_options() {
   local -r image="$2"
   local -r context="$3"
 
@@ -342,32 +358,27 @@ podman_build_with_options() {
   # shellcheck disable=SC2034
   local -A build_contexts
   local image_tag_primary
-  podman-build::load_env "${image}" \
+  podman::build_load_env "${image}" \
     build_args \
     build_contexts \
     image_tag_primary
 
-  podman-build::add_build_args "$1" build_args
-  podman-build::add_build_additional_contexts "$1" build_contexts
+  podman::build_add_args "$1" build_args
+  podman::build_add_additional_contexts "$1" build_contexts
 
-  podman-build::add_build_primary_tag "$1" \
+  podman::build_add_primary_tag "$1" \
     "${LOCAL_REPOSITORY}" \
     "${image}" \
-    "${image_tag_primary}"
+    "${image_tag_primary:-$PODMAN_BUILD_IMAGE_TAG_LATEST}"
 
-  podman-build::add_container_files_ordered "$1" "${context}"
-  podman-build::add_arg_file "$1"
+  podman::add_container_files_ordered "$1" "${context}"
+  podman::build_add_arg_file "$1"
 
-  podman-build::build "$1" \
+  podman::build "$1" \
     "${context}"
 }
 
-if [[ "${__BASHKIT_LIB_PODMAN_BUILD_CONSTANTS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=constants.env
-  . "${BASH_SOURCE[0]%/*}/constants.env"
-fi
-
 if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../../core/contract-utils.sh"
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi
