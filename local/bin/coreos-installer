@@ -53,7 +53,9 @@ USAGE
 # Returns:
 #   The exit status of `podman run`.
 core::coreos-installer() {
-  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  if ! declare -f log_debug >/dev/null 2>&1; then
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  fi
 
   local -a secrets=()
   local -a mounts=()
@@ -63,19 +65,28 @@ core::coreos-installer() {
       h) usage_coreos-installer; exit 0 ;;
       s)
         secrets+=("${OPTARG}")
-        log_sensitive "secrets+=(\"${OPTARG}\")"
         ;;
       m)
-        mounts+=("${OPTARG}")
-        log_debug "mounts+=(\"${OPTARG}\")"
-        ;;
+        mounts+=("${OPTARG}") ;;
       :)
         usage_coreos-installer
-        log_fatal "-${OPTARG} ${ERROR_OPTION_REQUIRED}"
+        fatal_msg="-${OPTARG} ${ERROR_OPTION_REQUIRED}"
+        if ! declare -f log_fatal >/dev/null 2>&1; then
+          log_fatal "${fatal_msg}"
+        else
+          echo "${fatal_msg}"
+          return 1
+        fi
         ;;
       ?)
         usage_coreos-installer
-        log_fatal "-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
+        fatal_msg="-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
+        if ! declare -f log_fatal >/dev/null 2>&1; then
+          log_fatal "${fatal_msg}"
+        else
+          echo "${fatal_msg}"
+          return 1
+        fi
         ;;
     esac
   done
@@ -90,24 +101,28 @@ core::coreos-installer() {
     "--volume=${PWD}:${__INSTALLER_WORKDIR}"
     "--workdir=${__INSTALLER_WORKDIR}"
   )
-  [[ -n "${PODMAN_LOG_LEVEL:-}" ]] && podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL:-warn}")
+
+  if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
+    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL:-warn}")
+  fi
 
   local s
   for s in "${secrets[@]}"; do
-    log_sensitive "Appending --secret=${s} to podman_run_options..."
     podman_run_options+=("--secret=${s}")
   done
 
   local m
   for m in "${mounts[@]}"; do
-    log_debug "Appending --mount=${m} to podman_run_options..."
     podman_run_options+=("--mount=${m}")
   done
 
-  log_debug "$(declare -p __INSTALLER_WORKDIR)"
-  log_debug "$(declare -p image)"
-  log_sensitive "$(declare -p podman_run_options)"
-  log_sensitive "coreos-installer options: $*"
+
+  if ! declare -f log_debug >/dev/null 2>&1; then
+    log_debug "$(declare -p __INSTALLER_WORKDIR)"
+    log_debug "$(declare -p image)"
+    log_sensitive "$(declare -p podman_run_options)"
+    log_sensitive "coreos-installer options: $*"
+  fi
 
   podman run \
     "${podman_run_options[@]}" \
@@ -115,16 +130,17 @@ core::coreos-installer() {
     "$@"
 }
 
-if ! declare -f init_logger >/dev/null 2>&1; then
-  # logging.sh should already be sourced by now.
-  # This is primarily present to provide shellcheck function definitions.
-  #
-  # shellcheck source=../../../../vendor/bash-logger/logging.sh
-  . "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
-
-  init_logger --name "$(basename "$0"):core::coreos-installer()"
-fi
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   core::coreos-installer "$@"
+else
+  if ! declare -f init_logger >/dev/null 2>&1; then
+    # logging.sh should already be sourced by now.
+    # This is primarily present to provide shellcheck function definitions.
+    #
+    # shellcheck source=../../../../vendor/bash-logger/logging.sh
+    . "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
+
+    init_logger --name "$(basename "$0"):core::coreos-installer()"
+  fi
 fi

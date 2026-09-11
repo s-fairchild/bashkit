@@ -21,24 +21,31 @@ readonly __BASHKIT_BIN_BW_SOURCED="true"
 # Returns:
 #   The exit status of `bw`.
 core::bw() {
-  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  if ! declare -f log_debug >/dev/null 2>&1; then
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  fi
 
+  local -a flatpak_run_options=(
+    "--command=bw"
+    "com.bitwarden.desktop"
+  )
+
+  # shellcheck disable=SC2068
   flatpak run \
-    --command=bw \
-    com.bitwarden.desktop \
+    ${flatpak_run_options[@]}
     "$@"
 }
 
-if ! declare -f init_logger >/dev/null 2>&1; then
-  # logging.sh should already be sourced by now.
-  # This is primarily present to provide shellcheck function definitions.
-  #
-  # shellcheck source=../../../../vendor/bash-logger/logging.sh
-  . "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
-
-  init_logger --name "$(basename "$0"):core::bw()"
-fi
-
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   core::bw "$@"
+else
+  if ! declare -f init_logger >/dev/null 2>&1; then
+    # logging.sh should already be sourced by now.
+    # This is primarily present to provide shellcheck function definitions.
+    #
+    # shellcheck source=../../../../vendor/bash-logger/logging.sh
+    . "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
+
+    init_logger --name "$(basename "$0"):core::bw()"
+  fi
 fi

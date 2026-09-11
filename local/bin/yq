@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# Thin podman wrapper around docker.io/mikefarah/yq, so callers never need yq
+# installed on the host.
+
+[[ "${XTRACE:-0}" -eq 1 ]] && set -x
+
+readonly __BASHKIT_BIN_YQ_SOURCED="true"
+
+# core::yq()
+#
+# Thin podman wrapper around docker.io/mikefarah/yq:4.53.2.
+# Mounts the current working directory as /workdir inside the container and
+# forwards all YQ_* environment variables so callers can pass values via the
+# environment without shell quoting issues.
+#
+# Globals:
+#   PODMAN_LOG_LEVEL   Optional. podman run log level. (default: warn)
+# Arguments:
+#   $@   All arguments are passed through to the containerized yq.
+# Outputs:
+#   Writes the containerized yq's stdout/stderr. This function's own stdout
+#   is its return channel -- callers capture it via `$(...)`, so its own
+#   trace log is sent to stderr.
+# Returns:
+#   The container's exit status.
+core::yq() {
+  # 1>&2: this function's stdout is its return channel (the containerized
+  # yq's output), captured via `$(...)` by every caller -- any console-level
+  # log write on stdout here would corrupt it.
+  if ! declare -f log_debug >/dev/null 2>&1; then
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))" 1>&2
+  fi
+
+
+  local -a podman_run_options=(
+    "-i"
+    "--rm"
+    "--userns=keep-id"
+    "--env='YQ_*'"
+    "--volume=${PWD}:/workdir:O"
+    "--workdir /workdir"
+  )
+
+  if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
+    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
+  fi
+
+  yq_default_options=(
+    "--exit-status=1"
+  )
+
+  local -r image="docker.io/mikefarah/yq:4.53.2"
+
+  # shellcheck disable=SC2068
+  podman run \
+    ${podman_run_options[@]} \
+    "${image}" \
+    ${yq_default_options[@]} \
+    "$@"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  core::yq "$@"
+else
+  if ! declare -f init_logger >/dev/null 2>&1; then
+    # logging.sh should already be sourced by now.
+    # This is primarily present to provide shellcheck function definitions.
+    #
+    # shellcheck source=../../../../vendor/bash-logger/logging.sh
+    . "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
+
+    init_logger --name "$(basename "$0"):core::yq()"
+  fi
+fi
