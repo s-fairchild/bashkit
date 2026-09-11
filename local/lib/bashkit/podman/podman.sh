@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 #
-# Umbrella loader for the podman-container/podman-secret/podman-volume/podman-build library files.
+# Umbrella loader for bashkit/local/lib/bashkit/podman library files.
 
 readonly __LIB_PODMAN_SOURCED="true"
 

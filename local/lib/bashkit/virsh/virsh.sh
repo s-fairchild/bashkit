@@ -4,8 +4,6 @@
 #
 # Add new core library files to this file as they are created.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_VIRSH_SOURCED="true"
 
 if [[ "${__BASHKIT_LIB_VIRSH_DOMAIN_SOURCED:-}" ]]; then
