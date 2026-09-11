@@ -1,49 +1,78 @@
-# hack/lib/openssl/openssl-gen-certs.sh
-#
 # shellcheck shell=bash
+#
+# ECC private-key and self-signed-certificate generation helpers built on
+# openssl: openssl::private_key_gen, openssl::self_signed_cert_gen.
 
 readonly __BASHKIT_LIB_OPENSSL_CERT_UTILS_SOURCED="true"
 
-# openssl_gen_private_key()
+# openssl::private_key_gen()
 #
-# Generates an ECC private key with openssl.
+# Generates an ECC (prime256v1) private key with openssl.
 #
+# Globals:
+#   None.
+# Arguments:
+#   None.
 # Outputs:
 #   The generated private key (PEM) on stdout.
+# Returns:
+#   The exit status of `openssl ecparam`.
 openssl::private_key_gen() {
-  debug "Starting ${FUNCNAME[0]}()"
+  log_debug "Starting ${FUNCNAME[0]}()"
 
   openssl ecparam \
     -name prime256v1 \
     -genkey
 }
 
+# openssl::usage_self_signed_cert_gen()
+#
+# Prints usage to stderr.
 openssl::usage_self_signed_cert_gen() {
   cat <<USAGE >&2
-Usage: openssl_gen_self_signed_certificate [-d days] [-s subject] [-a san_value]... [-h] < private_key
+Usage: openssl::self_signed_cert_gen [-d days] [-c country] [-s state_or_province] [-l locality] [-o organization] [-n common_name] [-a san_value]... [-h] < private_key
 
 Generates a self-signed certificate for the ECC private key read from stdin.
+The Subject Alternative Names always include "DNS:<common_name>" and
+"DNS:*.<common_name>" (derived from -n); -a appends additional SAN values
+to that list.
 
 Options:
-  -d days      Certificate expiration, in days. (default: 1825)
-  -s subject   Certificate subject string.
-               (default: "/C=US/ST=New York/L=New York City/O=Local Ignition Server/CN=ignition.local")
-  -a san_value Subject Alternative Name value to append (e.g. "DNS:example.local").
-               May be specified multiple times.
-               (default SAN values: "DNS:ignition.local", "DNS:*.ignition.local", "IP:127.0.0.1")
-  -h           Print this usage message and exit.
+  -d days               Certificate expiration, in days. (default: 1825)
+  -c country            Subject "C" (country) field. (default: "")
+  -s state_or_province  Subject "ST" (state/province) field. (default: "")
+  -l locality           Subject "L" (locality) field. (default: "")
+  -o organization       Subject "O" (organization) field. (default: "")
+  -n common_name        Subject "CN" (common name) field; also seeds the SAN
+                         list (see above). (default: "")
+  -a san_value          Additional Subject Alternative Name value to append
+                         (e.g. "DNS:example.local"). May be specified
+                         multiple times.
+  -h                    Print this usage message and exit.
 USAGE
 }
 
-# openssl_gen_self_signed_certificate()
+# openssl::self_signed_cert_gen()
 #
-# Generates a self-signed certificate for the ECC private key read from stdin.
+# Generates a self-signed certificate for the ECC private key read from
+# stdin. The certificate subject is assembled from -c/-s/-l/-o/-n. The
+# Subject Alternative Names always include "DNS:<common_name>" and
+# "DNS:*.<common_name>" (derived from -n); -a appends additional SAN
+# values to that list.
 #
+# Globals:
+#   ERROR_OPTION_ARG_REQUIRED, ERROR_OPTION_UNKNOWN
 # Arguments:
-#   -d days      Certificate expiration, in days. (default: 1825)
-#   -s subject   Certificate subject string.
-#   -a san_value Subject Alternative Name value to append. Repeatable.
-#   -h           Print usage and return 0.
+#   -d days               Certificate expiration, in days. (default: 1825)
+#   -c country            Subject "C" field. (default: "")
+#   -s state_or_province  Subject "ST" field. (default: "")
+#   -l locality           Subject "L" field. (default: "")
+#   -o organization       Subject "O" field. (default: "")
+#   -n common_name        Subject "CN" field; also seeds the SAN list.
+#                         (default: "")
+#   -a san_value          Additional Subject Alternative Name value to
+#                         append. Repeatable.
+#   -h                    Print usage and return 0.
 # Outputs:
 #   The generated certificate (PEM) on stdout.
 # Returns:
@@ -51,7 +80,7 @@ USAGE
 openssl::self_signed_cert_gen() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   local -r input="$(cat)"
-  [[ -z "${input:-}" ]] && fatal "Private key must be provided via stdin."
+  [[ -z "${input:-}" ]] && log_fatal "Private key must be provided via stdin."
 
   local -i days=1825
   local -a san_values
@@ -102,9 +131,10 @@ openssl::self_signed_cert_gen() {
   shift $((OPTIND - 1))
 
   local -r subject="/C=${country}/ST=${state_or_province}/L=${locality}/O=${organization}/CN=${common_name}"
-  local -a san_values=("DNS:${common_name}" "DNS:*.${common_name}")
+  san_values+=("DNS:${common_name}" "DNS:*.${common_name}")
   local -r addext="subjectAltName=$(IFS=','; printf '%s' "${san_values[*]}")"
 
+  log_info "Generating x509 self signed certificate."
   openssl req \
     -x509 \
     -nodes \
