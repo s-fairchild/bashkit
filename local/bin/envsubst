@@ -152,5 +152,6 @@ if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
 fi
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  readonly __bashkit_bin_envsubst_sourced="true"
   core::envsubst "$@"
 fi

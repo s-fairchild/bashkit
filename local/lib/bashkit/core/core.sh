@@ -6,7 +6,7 @@
 
 readonly __BASHKIT_LIB_CORE_SOURCED="true"
 
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKIT_LIB_CORE_BIN_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=bin-utils.sh
   . "${BASH_SOURCE[0]%/*}/bin-utils.sh"
 fi

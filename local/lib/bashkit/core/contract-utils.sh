@@ -79,9 +79,12 @@ core::require_operands() {
 #   Always 0.
 core::print_stack_trace() {
   local -i i
-  log_error "Stack trace (most recent call first):"
+  local logger="echo"
+  declare -f log_error >/dev/null 2>&1 && logger="log_error"
+
+  "${logger}" "Stack trace (most recent call first):"
   for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
-    log_error "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
+    "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
   done
 }
 
@@ -217,8 +220,9 @@ core::with_xtrace_suppressed() {
 # echo is intentionally used here in-case the logging submodule is unloaded
 core::init_git_submodules_error() {
   f="${1:-}"
-  if [[ -n "$f" ]]; then
-    echo "f=\$1 positional argument must be provided."
+  if [[ -z "$f" ]]; then
+    echo "${FUNCNAME[0]}() f=\$1 positional argument must be provided."
+    core::print_stack_trace
     return 1
   fi
 
@@ -227,6 +231,7 @@ core::init_git_submodules_error() {
     local msg="${ERROR_FILE_NOT_FOUND}: ${f} "
     msg+="Run: git submodule update --init --recursive"
     echo "${msg}" >&2
+    core::print_stack_trace
     return 1
   fi
 
