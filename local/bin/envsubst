@@ -1,0 +1,156 @@
+# shellcheck shell=bash
+#
+# Standalone wrapper executable that runs envsubst in a container
+# (docker.io/steve51516/envsubst:latest), forwarding options via getopts and
+# remaining arguments straight through to the containerized binary.
+
+# core::usage_envsubst()
+#
+# Prints usage to stderr.
+#
+# Globals:
+#   None.
+# Arguments:
+#   None.
+# Outputs:
+#   The usage message, written to stderr.
+# Returns:
+#   Always 0.
+core::usage_envsubst() {
+  cat <<USAGE >&2
+Usage: envsubst [-s secret]... [-e name=value]... [-h] [envsubst_arg...]
+
+Runs envsubst in a container with image docker.io/steve51516/envsubst:latest.
+
+Options:
+    -s secret      podman secret name mounted into the container as a
+                    type=env secret. May be specified multiple times.
+    -e name=value  Additional environment variable passed to the container.
+                    Double quotes around the value (if any) are stripped.
+                    May be specified multiple times.
+    -h             Print this usage message and exit.
+
+Remaining arguments are passed through to the envsubst container.
+
+Environment:
+    PODMAN_LOG_LEVEL  podman run log level. (default: warn)
+
+All ENVSUBST_* environment variables are forwarded to the container
+automatically.
+USAGE
+}
+
+# core::envsubst()
+#
+# Thin podman wrapper around docker.io/steve51516/envsubst:latest. Forwards
+# all ENVSUBST_* environment variables and mounts every -s secret as a
+# podman type=env secret.
+#
+# Globals:
+#   PODMAN_LOG_LEVEL  Optional. podman run log level. (default: warn)
+# Arguments:
+#   -s <secret>       podman secret name to mount as a type=env secret.
+#                     Repeatable.
+#   -e <name=value>   Additional environment variable to pass to the
+#                     container. Repeatable.
+#   -h                Print usage and exit.
+#   $@                Remaining args are passed to the envsubst container.
+# Outputs:
+#   Writes the containerized envsubst's stdout/stderr.
+# Returns:
+#   The container's exit status.
+core::envsubst() {
+  if declare -f log_debug >/dev/null 2>&1; then
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  fi
+
+  local -i OPTIND=1
+  local -a podman_run_options=() podman_env_options=()
+  local opt error_msg
+  while getopts ':s:e:h' opt; do
+    case "${opt}" in
+      h) core::usage_envsubst; exit 0 ;;
+      s) podman_run_options+=("--secret=${OPTARG},type=env") ;;
+      e) podman_env_options+=("${OPTARG}") ;;
+      :)
+        core::usage_envsubst
+        error_msg="-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING}"
+        if declare -f log_error >/dev/null 2>&1; then
+          log_error "${error_msg}"
+        else
+          echo "${error_msg}" 1>&2
+        fi
+        return 1
+        ;;
+      ?)
+        core::usage_envsubst
+        error_msg="-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_UNKNOWN}"
+        if declare -f log_error >/dev/null 2>&1; then
+          log_error "${error_msg}"
+        else
+          echo "${error_msg}" 1>&2
+        fi
+        return 1
+        ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+
+  podman_run_options+=(
+    "--rm"
+    "-i"
+    "--env=ENVSUBST_*"
+  )
+
+  if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
+    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
+  fi
+
+  local e
+  for e in "${podman_env_options[@]}"; do
+    local identifier
+    identifier="$(cut -d '=' -f 1 <<< "${e}")"
+    if ! core::is_valid_var_name "${identifier}"; then
+      error_msg="Variable name identifier is invalid: ${identifier}"
+      if declare -f log_error >/dev/null 2>&1; then
+        log_error "${error_msg}"
+      else
+        echo "${error_msg}" 1>&2
+      fi
+      return 1
+    fi
+
+    local value
+    value="$(cut -d '=' -f 2 <<< "${e}")"
+    # Strip double quotes (if any) so they are not added to the value.
+    value="$(tr -d '"' <<< "${value}")"
+
+    podman_run_options+=("--env=${identifier}=${value}")
+  done
+
+  local -r image="docker.io/steve51516/envsubst:latest"
+
+  podman run \
+    "${podman_run_options[@]}" \
+    "${image}" \
+    "$@"
+}
+
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  if ! declare -f init_logger >/dev/null 2>&1; then
+    # logging.sh should already be sourced by now.
+    # This is primarily present to provide shellcheck function definitions.
+    #
+    # shellcheck source=../../../../vendor/bash-logger/logging.sh
+    . "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
+
+    init_logger --name "$(basename "$0"):core::envsubst()"
+  fi
+
+  # shellcheck source=../lib/bashkit/core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/contract-utils.sh"
+fi
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  core::envsubst "$@"
+fi
