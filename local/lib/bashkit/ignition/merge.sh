@@ -264,7 +264,7 @@ ignition::gen_config_merge_inlines() {
 
   # Parse the top-level butane YAML to compact JSON, stripping all comments.
   local config_json
-  if ! config_json="$(yq -o json -I 0 '... comments="" | . | select(. != null)' \
+  if ! config_json="$(core::yq -o json -I 0 '... comments="" | . | select(. != null)' \
     "${butane_path}")"; then
     log_error "failed to load config json from: ${butane_path}"
     return 1
@@ -350,4 +350,9 @@ fi
 if [[ "${__BASHKIT_LIB_CORE_SHA512SUM_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/sha512sum-utils.sh
   . "${BASH_SOURCE[0]%/*}/../core/sha512sum-utils.sh"
+fi
+
+if [[ "${__BASHKIT_BIN_YQ_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../../../bin/yq
+  . "${BASH_SOURCE[0]%/*}/../../../bin/yq"
 fi
