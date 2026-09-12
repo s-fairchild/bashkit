@@ -12,6 +12,15 @@ readonly __INSTALLER_WORKDIR="/data"
 # core::usage_coreos-installer()
 #
 # Prints usage to stderr.
+#
+# Globals:
+#   None.
+# Arguments:
+#   None.
+# Outputs:
+#   The usage message, written to stderr.
+# Returns:
+#   Always 0.
 core::usage_coreos-installer() {
   cat <<USAGE >&2
 Usage: coreos-installer [-s secret]... [-m mount]... [-h] [installer_arg...]
@@ -51,13 +60,13 @@ USAGE
 # Returns:
 #   The exit status of `podman run`.
 core::coreos-installer() {
-  if ! declare -f log_debug >/dev/null 2>&1; then
+  if declare -f log_debug >/dev/null 2>&1; then
     log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   fi
 
   local -a secrets=()
   local -a mounts=()
-  local opt OPTIND=1
+  local opt error_msg OPTIND=1
   while getopts ':s:m:h' opt; do
     case "${opt}" in
       h) core::usage_coreos-installer; exit 0 ;;
@@ -65,23 +74,23 @@ core::coreos-installer() {
       m) mounts+=("${OPTARG}"); ;;
       :)
         core::usage_coreos-installer
-        fatal_msg="-${OPTARG} ${ERROR_OPTION_REQUIRED}"
-        if ! declare -f log_fatal >/dev/null 2>&1; then
-          log_fatal "${fatal_msg}"
+        error_msg="-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING}"
+        if declare -f log_error >/dev/null 2>&1; then
+          log_error "${error_msg}"
         else
-          echo "${fatal_msg}"
-          return 1
+          echo "${error_msg}" 1>&2
         fi
+        return 1
         ;;
       ?)
         core::usage_coreos-installer
-        fatal_msg="-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
-        if ! declare -f log_fatal >/dev/null 2>&1; then
-          log_fatal "${fatal_msg}"
+        error_msg="-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_UNKNOWN}"
+        if declare -f log_error >/dev/null 2>&1; then
+          log_error "${error_msg}"
         else
-          echo "${fatal_msg}"
-          return 1
+          echo "${error_msg}" 1>&2
         fi
+        return 1
         ;;
     esac
   done
@@ -91,7 +100,7 @@ core::coreos-installer() {
   local -a podman_run_options=(
     "-i"
     "--rm"
-    "--env='BU_*'"
+    "--env=BU_*"
     "--security-opt=label=disable"
     "--volume=${PWD}:${__INSTALLER_WORKDIR}"
     "--workdir=${__INSTALLER_WORKDIR}"
@@ -112,7 +121,7 @@ core::coreos-installer() {
   done
 
 
-  if ! declare -f log_debug >/dev/null 2>&1; then
+  if declare -f log_debug >/dev/null 2>&1; then
     log_debug "$(declare -p __INSTALLER_WORKDIR)"
     log_debug "$(declare -p image)"
     log_sensitive "$(declare -p podman_run_options)"
@@ -126,9 +135,7 @@ core::coreos-installer() {
 }
 
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  core::coreos-installer "$@"
-else
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   if ! declare -f init_logger >/dev/null 2>&1; then
     # logging.sh should already be sourced by now.
     # This is primarily present to provide shellcheck function definitions.
@@ -138,4 +145,11 @@ else
 
     init_logger --name "$(basename "$0"):core::coreos-installer()"
   fi
+
+  # shellcheck source=../lib/bashkit/core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/contract-utils.sh"
+fi
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  core::coreos-installer "$@"
 fi

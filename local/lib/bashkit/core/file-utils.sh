@@ -31,7 +31,7 @@ core::file_read_builtin() {
   elif (( $# )); then
     input="$*"
   else
-    log_error "${ERROR_ARG_REQUIRED}: ${__bashkit_core_file_utils_error_file_not_found}"
+    log_error "${ERROR_ARG_REQUIRED}: "
     return 1
   fi
   log_sensitive "$(declare -p input)"
@@ -71,7 +71,7 @@ core::file_read_preserve_newlines() {
   elif (( $# )); then
     input="$*"
   else
-    log_error "${ERROR_ARG_REQUIRED}: ${__bashkit_core_file_utils_error_file_not_found}"
+    log_error "stdin or positional argument must be provided."
     return 1
   fi
   log_sensitive "$(declare -p input)"

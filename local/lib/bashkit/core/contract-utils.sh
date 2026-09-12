@@ -233,6 +233,10 @@ core::init_git_submodules_error() {
   return 0
 }
 
+core::is_valid_var_name() {
+  [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
+}
+
 if ! declare -f init_logger >/dev/null 2>&1; then
   logging_sh="${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
   core::init_git_submodules_error "$logging_sh"
