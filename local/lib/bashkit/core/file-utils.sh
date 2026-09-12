@@ -111,7 +111,7 @@ core::file_parse_extension() {
   elif (( $# )); then
     input="$*"
   else
-    log_error "${ERROR_ARG_REQUIRED}: ${__bashkit_core_file_utils_error_file_not_found}"
+    log_error "stdin or positional argument must be provided."
     return 1
   fi
   # DEBUG-level logging should be fine as this *should* only be a file
