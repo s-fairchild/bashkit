@@ -25,3 +25,8 @@ if [[ "${__BASHKIT_LIB_CORE_SHA512SUM_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=sha512sum-utils.sh
   . "${BASH_SOURCE[0]%/*}/sha512sum-utils.sh"
 fi
+
+if [[ "${__BASHKIT_LIB_CORE_YQ_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=yq-utils.sh
+  . "${BASH_SOURCE[0]%/*}/yq-utils.sh"
+fi

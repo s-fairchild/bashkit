@@ -52,7 +52,7 @@ core::require_operands() {
   local -i i
   for (( i = 1; i <= count; i++ )); do
     if ! [[ -v "${i}" ]]; then
-      log_error "\$${i} ${ERROR_OPERAND_REQUIRED}"
+      log_error "\$${i} operand is required."
       core::print_stack_trace
       return 1
     fi
