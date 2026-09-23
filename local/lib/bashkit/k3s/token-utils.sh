@@ -68,12 +68,9 @@ k3s::token_gen() {
   fi
 }
 
-if ! declare -f init_logger >/dev/null 2>&1; then
-  # logging.sh should already be sourced by now.
-  # This is primarily present to provide shellcheck function definitions.
-  #
-  # shellcheck source=../../../../../bash-logger/logging.sh
-  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
-
-  init_logger --name "$(basename "$0")"
+if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/logger-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/logger-utils.sh"
 fi
+
+core::logger_init --name "$(basename "$0")"

@@ -1,9 +1,10 @@
 # shellcheck shell=bash
 #
 # Argument/operand validation and getopts helpers shared across bashkit and
-# its consumers: core::require_operands, core::is_option_arg_dup,
-# core::with_xtrace_suppressed, and a stack-trace helper used when a
-# contract check fails.
+# its consumers: core::fail, core::require_operands, core::is_option_arg_dup,
+# and core::with_xtrace_suppressed. core::print_stack_trace and
+# core::init_git_submodules_error live in logger-utils.sh, which this file
+# sources, so they work before the logger is loaded.
 
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
@@ -18,36 +19,6 @@ readonly __BASHKIT_CORE_LIB_BOOLEAN_NO="no"
 
 readonly __BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING="value must be provided"
 readonly __BASHKIT_CORE_LIB_ERROR_OPTION_UNKNOWN="option is unknown"
-
-# core::print_stack_trace()
-#
-# Logs the current bash call stack at LOG_LEVEL_ERROR, deepest frame first
-# (starting at this function's caller), so a failed contract check --
-# e.g. core::require_operands -- shows every calling function up to the
-# entry-point script instead of just the one-line error. Safe to call from
-# any function; each frame is logged as "at FUNCNAME (BASH_SOURCE:line)",
-# where "line" is the line in that frame where it called into the
-# next-deeper frame.
-#
-# Globals:
-#   FUNCNAME, BASH_SOURCE, BASH_LINENO
-# Arguments:
-#   None.
-# Outputs:
-#   The call stack, one frame per line, at ERROR level.
-# Returns:
-#   Always 0.
-core::print_stack_trace() {
-  local -i i
-  local logger="echo"
-  declare -f log_error >/dev/null 2>&1 && logger="log_error"
-
-  # >&2 keeps the echo fallback out of callers' $(...) captures.
-  "${logger}" "Stack trace (most recent call first):" >&2
-  for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
-    "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})" >&2
-  done
-}
 
 core::fail() {
   log_error "${FUNCNAME[1]}(): $*"
@@ -275,58 +246,13 @@ core::with_xtrace_suppressed() {
   esac
 }
 
-# core::init_git_submodules_error(file)
-#
-# Checks that a required file (expected to come from a git submodule) exists,
-# for use before sourcing it. Uses `echo` rather than the logging API, since
-# this guards the case where the logging submodule itself hasn't been
-# initialized yet.
-#
-# Arguments:
-#   $1   Path to the file to check.
-# Outputs:
-#   An error to stderr naming the missing file and the fix (`git submodule
-#   update --init --recursive`) if $1 is missing or does not exist.
-# Returns:
-#   1 if $1 is unset/empty or does not exist as a file; 0 otherwise.
-# echo is intentionally used here in-case the logging submodule is unloaded
-core::init_git_submodules_error() {
-  local f="${1:-}"
-
-  [[ -n "$f" ]] || {
-    # core::fail is not used to avoid calling log_error if the submodule is not present.
-    echo "${FUNCNAME[0]}(): \$1 cannot be null." >&2
-    core::print_stack_trace
-    return 1
-  }
-
-  [[ -f "${f}" ]] || {
-    local msg="${FUNCNAME[0]}(): file not found: ${f} "
-    msg+="Run: git submodule update --init --recursive"
-    # core::fail is not used to avoid calling log_error if the submodule is not present.
-    echo "${msg}" >&2
-    core::print_stack_trace
-    return 1
-  }
-
-  return 0
-}
-
 core::is_valid_var_name() {
   [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
 }
 
-if ! declare -f init_logger >/dev/null 2>&1; then
-  logging_sh="${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
-  core::init_git_submodules_error "$logging_sh"
-  # logging.sh should already be sourced by now.
-  # This is primarily present to provide shellcheck function definitions.
-  #
-  # shellcheck source=../../../../../bash-logger/logging.sh
-  . "$logging_sh"
-  unset logging_sh
-
-  # Route every level to stderr so log lines never pollute function output
-  # captured via $(...); bash-logger's default sends only ERROR+ to stderr.
-  init_logger --name "$(basename "$0")" --stderr-level DEBUG
+if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=logger-utils.sh
+  . "${BASH_SOURCE[0]%/*}/logger-utils.sh"
 fi
+
+core::logger_init --name "$(basename "$0")"

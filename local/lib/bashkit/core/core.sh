@@ -21,6 +21,11 @@ if [[ "${__BASHKIT_LIB_CORE_FILE_UTILS_SOURCED:-}" != "true" ]]; then
   . "${BASH_SOURCE[0]%/*}/file-utils.sh"
 fi
 
+if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=logger-utils.sh
+  . "${BASH_SOURCE[0]%/*}/logger-utils.sh"
+fi
+
 if [[ "${__BASHKIT_LIB_CORE_SHA512SUM_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=sha512sum-utils.sh
   . "${BASH_SOURCE[0]%/*}/sha512sum-utils.sh"

@@ -142,15 +142,28 @@ every consumer at the same time.
   - A file that uses any `core::*` contract helper (`core::fail`,
     `core::require_*`, …) sources `core/contract-utils.sh` and does **not**
     load `bash-logger` itself. `contract-utils.sh` loads the logger.
-  - Only a file with no `core::` dependency loads the logger directly. It
-    loads it only if `init_logger` isn't defined yet, from the fixed
-    sibling-submodule offset the file already uses.
-  - Initialize the logger with every level routed to stderr, so log lines
-    never end up in a caller's `$(...)` capture:
+  - Only a file with no `core::` dependency loads the logger itself. It does
+    so through `core/logger-utils.sh`, never by sourcing `logging.sh` by
+    path:
 
     ```bash
-    init_logger --name "$(basename "$0")" --stderr-level DEBUG
+    if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
+      # shellcheck source=../core/logger-utils.sh
+      . "${BASH_SOURCE[0]%/*}/../core/logger-utils.sh"
+    fi
+
+    core::logger_init --name "$(basename "$0")"
     ```
+
+  - `core::logger_init` does nothing if `init_logger` is already defined.
+    Otherwise it sources the first `logging.sh` it finds in
+    `vendor/bash-logger/`, `~/.local/lib/bash-logger/`, then
+    `/usr/local/lib/bash-logger/`.
+  - It passes `init_logger` the config file the environment selects
+    (`BASHKIT_LOG_CONFIG`, `BASHKIT_ENV`; see `core::logger_config_path`).
+  - It always routes every level to stderr (`--stderr-level DEBUG`), so log
+    lines never end up in a caller's `$(...)` capture. A config file can't
+    override this.
 
 ---
 
@@ -337,9 +350,11 @@ that can't be recovered from. For bad input or a failed command, call
 - Always follow it with `|| return` (§4.3), even inside a `case` arm.
   - Write `core::fail "..." || return`, not `core::fail "..."; return`.
 - Use it instead of a `log_error` + `return 1` pair.
-  - Exception: code that must work before the logger is loaded
-    (`core::init_git_submodules_error`) uses `echo ... >&2`,
+  - Exception: code that must work before the logger is loaded (the
+    functions in `core/logger-utils.sh`) uses `echo ... >&2`,
     `core::print_stack_trace`, and `return 1` instead.
+    - `core::print_stack_trace` lives in `logger-utils.sh` for this reason.
+      That file must not source anything, including `contract-utils.sh`.
   - Exception: getopts error arms (§4.4), which print usage and don't need a
     stack trace.
 
@@ -449,8 +464,8 @@ Google says to send errors to stderr. bashkit goes further and sends
 `log_sensitive`.
 
 - Don't use bare `echo ... >&2` for diagnostics.
-  - Exception: code that runs before the logger can be loaded
-    (`core::init_git_submodules_error`).
+  - Exception: code that runs before the logger can be loaded (the
+    functions in `core/logger-utils.sh`).
   - Exception: `local/bin/*` fallbacks for when the logger isn't loaded.
 - Log a variable's state with `log_debug "$(declare -p var)"`.
 - Log anything that may contain secret material with `log_sensitive`, never
@@ -633,5 +648,5 @@ another reason. Don't copy their patterns.
 | `virsh/virsh-network.sh` (`virsh::net_define`) | Writes the network XML to a `mktemp` file with no stated reason. `virsh net-define <(printf ...)` may work instead; test it before changing | §4.7 |
 | `core/sha512sum-utils.sh` | Function comments list arguments as `*) input - ...` instead of `$@` | §4.1 |
 | `core/contract-utils.sh` (`core::fail`, `core::require_nameref`, `core::is_valid_var_name`) | Missing or partial function comments; no entry logging | §4.1, §4.2 |
-| `kube/kubectl.sh` | `#######` banner comments; `kube::kubectl_wait` has no comment; `log_error` + `return 1` and `core::fail ...; return` instead of `core::fail ... \|\| return`; loads `bash-logger` directly although it sources `contract-utils.sh` | §4.1, §4.5, §2.2 |
-| `kube/kustomize.sh` | No function comments; unquoted `${cmd[@]}` behind `disable=SC2068` with no reason; loads `bash-logger` directly | §4.1, §7.1, §2.2 |
+| `kube/kubectl.sh` | `#######` banner comments; `kube::kubectl_wait` has no comment; `log_error` + `return 1` and `core::fail ...; return` instead of `core::fail ... \|\| return` | §4.1, §4.5 |
+| `kube/kustomize.sh` | No function comments; unquoted `${cmd[@]}` behind `disable=SC2068` with no reason | §4.1, §7.1 |
