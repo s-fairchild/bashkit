@@ -1,0 +1,9 @@
+external-sources=true
+source-path=SCRIPTDIR
+check-sourced=true
+enable=require-variable-braces      # SC2250  → "${var}"
+enable=require-double-brackets      # SC2292  → [[ ]] not [ ]
+enable=deprecate-which              # SC2230  → command -v (§8)
+enable=check-extra-masked-returns   # SC2312  → masked $(...) statuses
+enable=quote-safe-variables         # SC2248
+enable=avoid-nullary-conditions     # SC2244

@@ -1,65 +1,76 @@
 ---
 name: linting-code
 description: >
-  Lints the shell scripts in this bashkit repo (local/bin, local/lib/bashkit) using ShellCheck.
-  Use whenever checking code quality or fixing lint errors here. This repo has no
-  .shellcheckrc, no pre-commit, and no test harness of its own — see hack/vendor/bash-logger's
-  own linting-code skill for a differently-configured sibling submodule; don't reuse its
-  commands here.
+  Lints the shell scripts in this bashkit repo (local/bin, local/lib/bashkit) using ShellCheck
+  via `make lint` and the checked-in .shellcheckrc. Use whenever checking code quality or fixing
+  lint errors here. This repo has no pre-commit and no test harness of its own — see
+  hack/vendor/bash-logger's own linting-code skill for a differently-configured sibling
+  submodule; don't reuse its commands here.
 ---
 
 # Linting Code (bashkit)
 
-Adapted from the consuming `forge` repo's `hack/.claude/skills/linting-code/`. That skill
-assumes a repo-root Makefile (`lint-hack`/`lint-hack-file` targets) and a checked-in
-`.shellcheckrc` — neither exists in this repo. bashkit is a standalone, independently
-versioned library vendored as a git submodule; it has no Makefile lint targets, no
-pre-commit config, and no test suite (see `CLAUDE.md` "No tests"). This skill covers what
-actually exists here: running `shellcheck` directly.
+bashkit is a standalone, independently versioned library vendored as a git submodule. It has
+one lint target, `make lint`, which runs ShellCheck over every shell file using the checked-in
+`.shellcheckrc`. There is no pre-commit config and no test suite (see `CLAUDE.md`).
 
 ## Tools and where configuration lives
 
 | Tool       | Checks                                           | Config                                    |
 | ---------- | ------------------------------------------------- | ------------------------------------------ |
-| ShellCheck | Shell syntax, quoting, portability, common bugs  | None checked in — invoke with explicit flags (see below) |
+| ShellCheck | Shell syntax, quoting, portability, common bugs, plus the optional checks that enforce parts of `docs/STYLEGUIDE.md` | `.shellcheckrc` (repo root) |
 
-There is no `.shellcheckrc` in this repo. When linting bashkit files *from within a consuming
-repo* that does have one (e.g. `forge`'s `.shellcheckrc`, which sets `external-sources=true
-source-path=SCRIPTDIR check-sourced=true`), that config is picked up automatically and is the
-easiest way to get a clean, source-aware run — see "From a consuming repo" below. When linting
-bashkit standalone (no consumer checkout), pass the equivalent flags explicitly.
+`.shellcheckrc` sets `external-sources=true source-path=SCRIPTDIR check-sourced=true` and
+enables these optional checks:
+
+| Check | Code | Style rule |
+| --- | --- | --- |
+| `require-variable-braces` | SC2250 | `"${var}"` (Google baseline) |
+| `require-double-brackets` | SC2292 | `[[ ]]`, never `[ ]` (Google baseline) |
+| `deprecate-which` | SC2230 | `command -v`, not `which` (§8) |
+| `check-extra-masked-returns` | SC2312 | Don't mask a `$(...)` or pipeline status (§4.6) |
+| `quote-safe-variables` | SC2248 | Quote every expansion (Google baseline) |
+| `avoid-nullary-conditions` | SC2244 | `[[ -n "${x}" ]]`, not `[[ "${x}" ]]` |
+
+ShellCheck looks for `.shellcheckrc` starting in the linted file's directory and moving up, so
+this file applies even when you lint from a consumer repo. It takes precedence over the
+consumer's own rc file.
+
+shfmt is deliberately **not** used. Its output conflicts with forms the style guide requires:
+it splits the §4.2 entry-log line, one-line getopts `case` arms (§4.4), and one-line brace
+groups (§9.4), and no flag keeps them.
 
 ## Commands
-
-### From a consuming repo (recommended)
-
-Run from that repo's root so its `.shellcheckrc` applies and sourced-file resolution matches
-how these scripts are actually used:
-
-```bash
-shellcheck hack/vendor/bashkit/local/bin/coreos-installer
-shellcheck hack/vendor/bashkit/local/lib/bashkit/**/*.sh hack/vendor/bashkit/local/lib/bashkit/*.sh
-```
-
-### Standalone (no consumer checkout)
-
-```bash
-shellcheck --external-sources --source-path=SCRIPTDIR --check-sourced <file>
-```
-
-`--check-sourced` still won't fully resolve every path. Every file falls back to sourcing the
-external logging library at a fixed offset that assumes a sibling submodule layout (see
-`CLAUDE.md` "Sourcing and paths"): `../../../../../bash-logger/logging.sh` from a lib file, or
-`../../../../vendor/bash-logger/logging.sh` from `local/bin/*`. That file doesn't exist when
-linting this checkout on its own. Expect (and ignore) `SC1091: Not following: ...
-openBinaryFile: does not exist` for the `bash-logger/logging.sh` source lines when running this
-way; every other finding is real.
 
 ### Everything in one pass
 
 ```bash
-find local -name '*.sh' -o -path 'local/bin/*' -type f | xargs shellcheck
+make lint
 ```
+
+### One file
+
+```bash
+shellcheck local/lib/bashkit/virsh/virsh-network.sh
+```
+
+### From a consuming repo
+
+Run from that repo's root. bashkit's `.shellcheckrc` still applies, and `bash-logger/logging.sh`
+resolves because it's vendored alongside:
+
+```bash
+shellcheck hack/vendor/bashkit/local/bin/* hack/vendor/bashkit/local/lib/bashkit/**/*.sh
+```
+
+### Expected SC1091 when linting this checkout on its own
+
+Every file falls back to sourcing the external logging library at a fixed offset that assumes a
+sibling submodule layout (see `CLAUDE.md` "Sourcing and paths"): `../../../../../bash-logger/logging.sh`
+from a lib file, or `../../../../vendor/bash-logger/logging.sh` from `local/bin/*`. That file
+doesn't exist in a standalone checkout. Expect (and ignore) `SC1091: Not following: ...
+openBinaryFile: does not exist` for the `bash-logger/logging.sh` source lines, which currently
+appear once per `local/bin/*` wrapper. Every other finding is real.
 
 ### Confirm it actually behaves, not just parses
 
@@ -104,4 +115,5 @@ Common in this repo:
 | SC2155 | Combined `local`/assign masking exit status  | Split: `local x; x="$(...)"`. Don't disable (STYLEGUIDE §7.1) |
 | SC2015 | `a && b \|\| c` used as if-then-else    | Rewrite as `if`/`else`, or brace the chain (STYLEGUIDE §9). Don't disable |
 | SC1072/SC1073 | Malformed `# shellcheck` directive, usually `-- reason` | Put the reason after a second `#` (STYLEGUIDE §7.1) |
+| SC2312 | `$(...)` or pipeline whose failure is masked | Split the command out and check its status, or append `\|\| true` with a comment explaining why (STYLEGUIDE §4.6) |
 | SC1091 | Can't follow a sourced file                  | Expected when linting standalone (see above). If it fires when linting from a consumer repo with `external-sources=true`, check that the file exists at the `${BASH_SOURCE[0]%/*}`-relative path and that the `# shellcheck source=` directive matches it (STYLEGUIDE §2.2) |

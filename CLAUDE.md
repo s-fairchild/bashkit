@@ -59,4 +59,4 @@ Copies `local/bin/*` to `~/.local/bin/` and recursively installs `local/lib/bash
 
 ## Linting and validation
 
-There is no test harness (no bats, no `.shellcheckrc`, no pre-commit). Lint with `shellcheck` — the `linting-code` skill (`.claude/skills/linting-code/SKILL.md`) has the commands for linting from a consumer repo (recommended) versus standalone, and which `SC1091` findings to expect. Validate runtime behavior by sourcing the affected file from within a consumer repo that has `bash-logger` vendored, or behind a minimal stub of the logging API.
+There is no test harness (no bats, no pre-commit). Lint with `make lint`, which runs `shellcheck` over every shell file using the checked-in `.shellcheckrc` — the `linting-code` skill (`.claude/skills/linting-code/SKILL.md`) explains the enabled optional checks, how to lint from a consumer repo, and which `SC1091` findings to expect. Validate runtime behavior by sourcing the affected file from within a consumer repo that has `bash-logger` vendored, or behind a minimal stub of the logging API.

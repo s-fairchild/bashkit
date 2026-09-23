@@ -122,10 +122,16 @@ In short:
 
 ## Linting
 
-There is no test harness (no bats, no `.shellcheckrc`, no pre-commit). Lint
-with `shellcheck` directly — see `.claude/skills/linting-code/SKILL.md` for
-the full command reference, including how to lint from within a consuming
-repo (recommended, so its `.shellcheckrc` and sourced-file resolution apply)
-versus standalone. Validate runtime behavior by sourcing the affected file
+There is no test harness (no bats, no pre-commit). Lint with:
+
+```bash
+make lint
+```
+
+This runs `shellcheck` over every shell file using the checked-in
+`.shellcheckrc`, which enables optional checks for parts of
+`docs/STYLEGUIDE.md`. See `.claude/skills/linting-code/SKILL.md` for details,
+including linting from within a consuming repo and the `SC1091` findings to
+expect standalone. Validate runtime behavior by sourcing the affected file
 from within a consumer repo that has `bash-logger` vendored alongside
 bashkit.
