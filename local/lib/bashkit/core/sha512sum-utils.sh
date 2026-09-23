@@ -78,8 +78,10 @@ core::sha512sum_gen() {
   log_debug "Starting ${FUNCNAME[0]}()"
 
   if (( $# )); then
+    log_debug "input from positional arg 1."
     local -r input="$1"
   elif [[ ! -t 0 ]]; then
+    log_debug "input from stdin."
     local -r input="$(cat)"
   else
     log_error "${FUNCNAME[0]}(): stdin AND \$1 positional argument cannot be null."

@@ -48,6 +48,12 @@ core::print_stack_trace() {
   done
 }
 
+core::fail() {
+  log_error "${FUNCNAME[1]}(): $*"
+  core::print_stack_trace
+  return 1
+}
+
 # core::require_operands(count "$@")
 #
 # Validates that the caller's first <count> positional parameters are set
@@ -80,12 +86,75 @@ core::require_operands() {
   local -ri count="$1"; shift
   local -i i
   for (( i = 1; i <= count; i++ )); do
-    if ! [[ -v "${i}" ]]; then
-      log_error "\$${i} operand is required."
-      core::print_stack_trace
-      return 1
-    fi
+    [[ -v "${i}" ]] || { core::fail "\$${i} operand is required." || return; }
   done
+}
+
+# core::require_pipestatus("${PIPESTATUS[@]}")
+#
+# Validates that every stage of the caller's most recent pipeline exited 0.
+# Logs the first non-zero stage (by PIPESTATUS index) along with the full
+# status list, plus a stack trace, and returns 1.
+#
+# PIPESTATUS is overwritten by every command, so this must be the very next
+# command after the pipeline, with the array expanded as its arguments
+# (the expansion happens before this function runs, so it isn't clobbered):
+#
+#   my_fn() {
+#     producer | consumer
+#     core::require_pipestatus "${PIPESTATUS[@]}" || return
+#   }
+#
+# Don't append `|| ...` to the pipeline itself; that would run a command
+# and replace PIPESTATUS before it can be checked.
+#
+# Globals:
+#   None.
+# Arguments:
+#   $@   The caller's "${PIPESTATUS[@]}", one exit status per stage.
+# Outputs:
+#   An error and stack trace on the first non-zero stage.
+# Returns:
+#   1 if any stage exited non-zero; 0 otherwise.
+core::require_pipestatus() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+
+  core::require_operands 1 "$@" || return 1
+
+  local -i i=0
+  local status
+  for status in "$@"; do
+    (( status == 0 )) || {
+      core::fail "pipeline stage PIPESTATUS[${i}] exited ${status}: PIPESTATUS=($*)" || return
+    }
+    (( ++i ))
+  done
+}
+
+# core::require_nameref(name [expected_type])
+#
+# Validates a variable name the caller is about to bind with `local -n`.
+# Rejects invalid identifiers and, when <expected_type> is given ("a", "A",
+# or "-" for scalar), requires the target to already be declared with that
+# type. Cannot detect shadowing by the caller's own locals -- prefix
+# nameref/local names in ref-taking functions to avoid that.
+core::require_nameref() {
+  core::require_operands 1 "$@" || return 1
+  local -r __crn_name="$1"
+  local -r __crn_want="${2:-}"
+
+  core::is_valid_var_name "${__crn_name}" || {
+    core::fail "'${__crn_name}' is not a valid variable name." || return
+  } 
+  [[ -z "${__crn_want}" ]] && return 0
+
+  local __crn_decl
+  __crn_decl="$(declare -p "${__crn_name}" 2>/dev/null)" || {
+    core::fail "'${__crn_name}' is not declared." || return
+  }
+  [[ "${__crn_decl}" == "declare -"*"${__crn_want}"* ]] || {
+    core::fail "'${__crn_name}' is not of type -${__crn_want}." || return
+  }
 }
 
 # core::is_option_arg_dup(opt current_value)
