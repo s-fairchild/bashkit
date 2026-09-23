@@ -6,10 +6,10 @@ readonly __BASHKIT_LIB_KUBE_KUBECTL_SOURCED="true"
 
 kube::kubectl_wait() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -r resource="${1}"
   local -r namespace="${2:-}"
-  local -r timeout="${3:-'300s'}"
+  local -r timeout="${3:-300s}"
 
   local msg="Waiting for ${resource}"
   [[ -n "${namespace}" ]] && msg+=" in namespace ${namespace} "

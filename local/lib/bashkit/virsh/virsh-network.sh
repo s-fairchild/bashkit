@@ -39,7 +39,7 @@ readonly __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART="Autostart"
 virsh::net_define() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -r network_name="$1"
   local -r network_desc="${2:-}"
 
@@ -72,7 +72,7 @@ virsh::net_define() {
 virsh::net_activate() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh net-start "$1"
 }
 
@@ -91,7 +91,7 @@ virsh::net_activate() {
 virsh::net_destroy() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh net-destroy "$1"
 }
 
@@ -112,7 +112,7 @@ virsh::net_destroy() {
 virsh::net_is_defined() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh net-uuid "$1" > /dev/null 2>&1
 }
 
@@ -132,7 +132,7 @@ virsh::net_is_defined() {
 virsh::net_is_active() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh::net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_ACTIVE}"
 }
 
@@ -153,7 +153,7 @@ virsh::net_is_active() {
 virsh::net_is_persistent() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh::net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT}"
 }
 
@@ -173,7 +173,7 @@ virsh::net_is_persistent() {
 virsh::net_is_autostart() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh::net_parse_info "$1" "${__BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART}"
 }
 
@@ -193,7 +193,7 @@ virsh::net_is_autostart() {
 virsh::net_autostart() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh net-autostart "$1"
 }
 
@@ -216,7 +216,7 @@ virsh::net_autostart() {
 virsh::net_parse_info() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return
   local -r network="$1"
   local -r search="$2"
 

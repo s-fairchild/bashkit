@@ -28,7 +28,7 @@ fi
 virsh::pool_define() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh pool-define "$1"
 }
 
@@ -54,7 +54,7 @@ virsh::pool_define() {
 virsh::pool_build() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -r name="$1"
 
   local pool_type
@@ -84,7 +84,7 @@ virsh::pool_build() {
 #   The exit status of `virsh pool-start`.
 virsh::pool_start() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
 
   virsh pool-start "$1"
 }
@@ -104,7 +104,7 @@ virsh::pool_start() {
 #   The exit status of `virsh pool-autostart`.
 virsh::pool_autostart() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
 
   virsh pool-autostart "$1"
 }
@@ -125,7 +125,7 @@ virsh::pool_autostart() {
 #   0 if the pool is defined; non-zero otherwise.
 virsh::pool_is_defined() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
 
   virsh pool-uuid "$1" > /dev/null 2>&1
 }
@@ -146,7 +146,7 @@ virsh::pool_is_defined() {
 #   0 if the pool's state is "running"; non-zero otherwise.
 virsh::pool_is_active() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
 
   # Capture first, then grep the captured text (not a live pipe): under
   # this repo's `set -o pipefail`, `virsh pool-info | grep -q ...`
@@ -178,7 +178,7 @@ virsh::pool_is_active() {
 virsh::vol_create() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return
   local -r pool="$1"
   local -r xml_file="$2"
 
@@ -203,7 +203,7 @@ virsh::vol_create() {
 virsh::vol_is_present() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return
   local -r pool="$1"
   local -r vol="$2"
 

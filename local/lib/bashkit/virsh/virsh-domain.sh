@@ -22,7 +22,7 @@ readonly __BASHKIT_LIB_VIRSH_DOMAIN_SOURCED="true"
 virsh::domain_define() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh define "$1"
 }
 
@@ -43,7 +43,7 @@ virsh::domain_define() {
 virsh::domain_undefine() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh undefine "$1"
 }
 
@@ -67,7 +67,7 @@ virsh::domain_undefine() {
 virsh::domain_create() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh create "$1"
 }
 
@@ -86,7 +86,7 @@ virsh::domain_create() {
 virsh::domain_start() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh start "$1"
 }
 
@@ -108,7 +108,7 @@ virsh::domain_start() {
 virsh::domain_destroy() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh destroy "$1"
 }
 
@@ -129,7 +129,7 @@ virsh::domain_destroy() {
 virsh::domain_autostart() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh autostart "$1"
 }
 
@@ -150,7 +150,7 @@ virsh::domain_autostart() {
 virsh::domain_is_defined() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   virsh dominfo "$1" > /dev/null 2>&1
 }
 
@@ -170,7 +170,7 @@ virsh::domain_is_defined() {
 virsh::domain_is_active() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   [[ "$(virsh domstate "$1" 2> /dev/null)" == "running" ]]
 }
 

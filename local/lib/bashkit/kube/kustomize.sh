@@ -6,7 +6,7 @@ readonly __BASHKIT_LIB_KUBE_KUSTOMIZE_SOURCED="true"
 
 kube::kustomize_build() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -r kustomize_dir="${1}"
 
   [[ -d "${kustomize_dir}" ]] || { core::fail "directory not found: ${kustomize_dir}" || return; }

@@ -201,7 +201,7 @@ podman::secret_create_from_file() {
   done
   shift $((OPTIND - 1))
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -n src_files="$1"
 
   local secret_name f
@@ -286,7 +286,7 @@ podman::secret_gen_file_secretsdata() {
 podman::secret_filter_by_label() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return
   local -r label="$1"
   local -r value="$2"
   log_debug "$(declare -p label)"

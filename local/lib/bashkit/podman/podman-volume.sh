@@ -16,7 +16,7 @@ readonly __BASHKIT_LIB_PODMAN_VOLUME_SOURCED="true"
 #   0 if the volume exists; 1 otherwise (also logs an error).
 podman::volume_exists() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -r v="$1"
 
   if ! podman volume exists "${v}"; then
@@ -38,7 +38,7 @@ podman::volume_exists() {
 #   Non-zero (via fatal) if volume creation fails.
 podman::volume_create() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -r v="$1"
 
   # Possible nice to have features here
@@ -71,7 +71,7 @@ podman::volume_create() {
 podman::volume_export_untar_stdout() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return
   local -r vol="$1"
   local -r target="$2"
 

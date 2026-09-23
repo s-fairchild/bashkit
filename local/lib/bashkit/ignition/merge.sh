@@ -38,7 +38,7 @@ ignition::gen() {
   # INFO-level log call below.
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))" 1>&2
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -r butane_path="$1"
   local -n _secret_names_ref="${2:-"${__empty_array_ref}"}"
 
@@ -98,7 +98,7 @@ ignition::merge_read_inline_path() {
   # dumped via $* -- everything else about the call is still worth tracing normally.
   log_debug "Starting ${FUNCNAME[0]}(<config_json redacted> $2 $3 $4)"
 
-  core::require_operands 4 "$@" || return 1
+  core::require_operands 4 "$@" || return
   local -r config_json="$1"
   local -r merge_jq_path="$2"
   local -ri idx="$3"
@@ -141,7 +141,7 @@ ignition::merge_read_inline_path() {
 ignition::merge_compile_entry() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 3 "$@" || return 1
+  core::require_operands 3 "$@" || return
   local -r butane_file_path="$1"
   local -n ignition_json_out="$2"
   local -n verification_hash_out="$3"
@@ -194,7 +194,7 @@ ignition::merge_write_entry() {
   # redacted here rather than dumped via $* -- everything else is still traced normally.
   log_debug "Starting ${FUNCNAME[0]}(<config_json redacted> $2 $3 $4 <ignition_json redacted> $6)"
 
-  core::require_operands 6 "$@" || return 1
+  core::require_operands 6 "$@" || return
   local -r config_json="$1"
   local -r merge_jq_path="$2"
   local -ri idx="$3"
@@ -252,7 +252,7 @@ getpath(\$verification_hash_jq_path) = \$verification_hash)" \
 ignition::gen_config_merge_inlines() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return
   local -r butane_path="$1"
   local -n out="$2"
   local -r secrets="${3:-"${__empty_array_ref}"}"

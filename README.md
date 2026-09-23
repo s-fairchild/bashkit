@@ -106,7 +106,7 @@ function.
   `readonly __BASHKIT_LIB_<NAME>_SOURCED="true"` at the top, checked before
   re-sourcing a dependency — don't rename these without updating every call
   site across every consumer.
-- Argument validation goes through `core::require_operands N "$@" || return 1`
+- Argument validation goes through `core::require_operands N "$@" || return`
   followed by `local -r x="$1"`, not manual `${1?...}` checks.
 - Function entry is logged as the first line of every function:
   `log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"`.

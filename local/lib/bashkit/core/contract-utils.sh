@@ -62,10 +62,12 @@ core::fail() {
 # missing one and returns 1.
 #
 # `return` here only unwinds core::require_operands itself, not its caller --
-# the caller must check the exit status and return on its own behalf:
+# the caller must check the exit status and return on its own behalf. Use a
+# bare `|| return` (not `|| return 1`) so the caller propagates whatever
+# status core::fail produced rather than hardcoding it:
 #
 #   my_fn() {
-#     core::require_operands 3 "$@" || return 1
+#     core::require_operands 3 "$@" || return
 #     local -r a="$1" b="$2" c="$3"
 #     ...
 #   }
@@ -119,7 +121,7 @@ core::require_operands() {
 core::require_pipestatus() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
 
   local -i i=0
   local status
@@ -139,7 +141,7 @@ core::require_pipestatus() {
 # type. Cannot detect shadowing by the caller's own locals -- prefix
 # nameref/local names in ref-taking functions to avoid that.
 core::require_nameref() {
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local -r __crn_name="$1"
   local -r __crn_want="${2:-}"
 
@@ -179,7 +181,7 @@ core::require_nameref() {
 core::is_option_arg_dup() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return
   local -r opt="$1"
   local -r opt_arg="$2"
 
@@ -204,7 +206,7 @@ core::is_option_arg_dup() {
 # Returns:
 #   1 if the value is not a recognized boolean spelling; 0 otherwise.
 core::is_boolean() {
-  core::require_operands 1 "$@" || return 1
+  core::require_operands 1 "$@" || return
   local bool="$1"
   readonly bool="${bool,,}"
 
@@ -245,7 +247,7 @@ core::is_boolean() {
 core::with_xtrace_suppressed() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  core::require_operands 2 "$@" || return 1
+  core::require_operands 2 "$@" || return
   local -r mode="$1"
   local -n state="$2"
 
