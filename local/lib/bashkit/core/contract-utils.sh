@@ -19,6 +19,35 @@ readonly __BASHKIT_CORE_LIB_BOOLEAN_NO="no"
 readonly __BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING="value must be provided"
 readonly __BASHKIT_CORE_LIB_ERROR_OPTION_UNKNOWN="option is unknown"
 
+# core::print_stack_trace()
+#
+# Logs the current bash call stack at LOG_LEVEL_ERROR, deepest frame first
+# (starting at this function's caller), so a failed contract check --
+# e.g. core::require_operands -- shows every calling function up to the
+# entry-point script instead of just the one-line error. Safe to call from
+# any function; each frame is logged as "at FUNCNAME (BASH_SOURCE:line)",
+# where "line" is the line in that frame where it called into the
+# next-deeper frame.
+#
+# Globals:
+#   FUNCNAME, BASH_SOURCE, BASH_LINENO
+# Arguments:
+#   None.
+# Outputs:
+#   The call stack, one frame per line, at ERROR level.
+# Returns:
+#   Always 0.
+core::print_stack_trace() {
+  local -i i
+  local logger="echo"
+  declare -f log_error >/dev/null 2>&1 && logger="log_error"
+
+  "${logger}" "Stack trace (most recent call first):"
+  for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
+    "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
+  done
+}
+
 # core::require_operands(count "$@")
 #
 # Validates that the caller's first <count> positional parameters are set
@@ -56,35 +85,6 @@ core::require_operands() {
       core::print_stack_trace
       return 1
     fi
-  done
-}
-
-# core::print_stack_trace()
-#
-# Logs the current bash call stack at LOG_LEVEL_ERROR, deepest frame first
-# (starting at this function's caller), so a failed contract check --
-# e.g. core::require_operands -- shows every calling function up to the
-# entry-point script instead of just the one-line error. Safe to call from
-# any function; each frame is logged as "at FUNCNAME (BASH_SOURCE:line)",
-# where "line" is the line in that frame where it called into the
-# next-deeper frame.
-#
-# Globals:
-#   FUNCNAME, BASH_SOURCE, BASH_LINENO
-# Arguments:
-#   None.
-# Outputs:
-#   The call stack, one frame per line, at ERROR level.
-# Returns:
-#   Always 0.
-core::print_stack_trace() {
-  local -i i
-  local logger="echo"
-  declare -f log_error >/dev/null 2>&1 && logger="log_error"
-
-  "${logger}" "Stack trace (most recent call first):"
-  for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
-    "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
   done
 }
 
