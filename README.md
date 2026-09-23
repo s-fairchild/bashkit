@@ -115,9 +115,9 @@ local/
     core/
       core.sh                   # umbrella loader for this directory
       bin-utils.sh               # sources local/bin/{bw,coreos-installer,yq} for library-style use
+      boolean-utils.sh           # core::is_boolean, __BASHKIT_CORE_BOOLEAN_* constants
       contract-utils.sh          # core::fail, core::require_{operands,pipestatus,nameref},
-                                  # core::is_option_arg_dup, core::is_boolean,
-                                  # core::with_xtrace_suppressed
+                                  # core::is_option_arg_dup, core::with_xtrace_suppressed
       logger-utils.sh            # core::logger_{source,config_path,init,resolve},
                                   # core::print_stack_trace
       file-utils.sh               # core::file_read_builtin, core::file_read_preserve_newlines,

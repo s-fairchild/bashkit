@@ -37,8 +37,9 @@ local/
     yq                  # docker.io/mikefarah/yq via podman
   lib/bashkit/
     core/               # core::*  — contract-utils (fail, require_operands, require_pipestatus,
-                        #            require_nameref, is_option_arg_dup, is_boolean,
-                        #            with_xtrace_suppressed), logger-utils (logger_source,
+                        #            require_nameref, is_option_arg_dup,
+                        #            with_xtrace_suppressed), boolean-utils (is_boolean,
+                        #            __BASHKIT_CORE_BOOLEAN_* constants), logger-utils (logger_source,
                         #            logger_config_path, logger_init, logger_resolve,
                         #            print_stack_trace; no dependencies), file-utils,
                         #            sha512sum-utils, yq-utils, bin-utils (sources local/bin/*)

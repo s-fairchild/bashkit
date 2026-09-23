@@ -5,10 +5,6 @@
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
 readonly __BASHKIT_VIRSH_NETWORK_SOURCED="true"
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
 
 #####################
 ### Globals Start ###
@@ -199,7 +195,8 @@ virsh::net_autostart() {
 # if its value is "yes".
 #
 # Globals:
-#   __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE, __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT, __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART
+#   __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE, __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT, __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART,
+#   __BASHKIT_CORE_BOOLEAN_YES
 # Arguments:
 #   $1   Network name.
 #   $2   Field name to search for; must be one of the __NETWORK_KEY_*
@@ -238,9 +235,12 @@ virsh::net_parse_info() {
   core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi
 
-# TODO source ../core/boolean-utils.sh once it's merged into this branch
+if [[ "${__BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/boolean-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/boolean-utils.sh"
+fi

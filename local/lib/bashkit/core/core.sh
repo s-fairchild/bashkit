@@ -11,6 +11,11 @@ if [[ "${__BASHKIT_LIB_CORE_BIN_UTILS_SOURCED:-}" != "true" ]]; then
   . "${BASH_SOURCE[0]%/*}/bin-utils.sh"
 fi
 
+if [[ "${__BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=boolean-utils.sh
+  . "${BASH_SOURCE[0]%/*}/boolean-utils.sh"
+fi
+
 if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/contract-utils.sh"

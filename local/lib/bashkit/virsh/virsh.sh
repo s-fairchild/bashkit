@@ -16,7 +16,7 @@ if [[ "${__BASHKIT_VIRSH_NETWORK_SOURCED:-}" != "true" ]]; then
   . "${BASH_SOURCE[0]%/*}/virsh-network.sh"
 fi
 
-if [[ "${__BASHKI_VIRSH_POOL_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKIT_VIRSH_POOL_SOURCED:-}" != "true" ]]; then
   # shellcheck source=virsh-pool.sh
   . "${BASH_SOURCE[0]%/*}/virsh-pool.sh"
 fi

@@ -6,10 +6,6 @@
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
 readonly __BASHKIT_VIRSH_POOL_SOURCED="true"
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
 
 # virsh::pool_define(xml_file)
 #
@@ -215,3 +211,8 @@ virsh::vol_is_present() {
     "${vol}" \
     > /dev/null 2>&1
 }
+
+if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+fi
