@@ -30,16 +30,6 @@ kube::kustomize_build_apply() {
   core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
-if ! declare -f init_logger >/dev/null 2>&1; then
-  # logging.sh should already be sourced by now.
-  # This is primarily present to provide shellcheck function definitions.
-  #
-  # shellcheck source=../../../../../bash-logger/logging.sh
-  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
-
-  init_logger --name "$(basename "${0}")"
-fi
-
 if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"

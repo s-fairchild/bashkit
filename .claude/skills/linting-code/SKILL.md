@@ -56,29 +56,29 @@ shellcheck local/lib/bashkit/virsh/virsh-network.sh
 
 ### From a consuming repo
 
-Run from that repo's root. bashkit's `.shellcheckrc` still applies, and `bash-logger/logging.sh`
-resolves because it's vendored alongside:
+Run from that repo's root. bashkit's `.shellcheckrc` still applies. `bash-logger/logging.sh`
+only resolves if bashkit's own `vendor/bash-logger` submodule was checked out with
+`git submodule update --init --recursive`:
 
 ```bash
 shellcheck hack/vendor/bashkit/local/bin/* hack/vendor/bashkit/local/lib/bashkit/**/*.sh
 ```
 
-### Expected SC1091 when linting this checkout on its own
+### Expected SC1091 when `vendor/bash-logger` isn't initialized
 
-Every file falls back to sourcing the external logging library at a fixed offset that assumes a
-sibling submodule layout (see `CLAUDE.md` "Sourcing and paths"): `../../../../../bash-logger/logging.sh`
-from a lib file, or `../../../../vendor/bash-logger/logging.sh` from `local/bin/*`. That file
-doesn't exist in a standalone checkout. Expect (and ignore) `SC1091: Not following: ...
-openBinaryFile: does not exist` for the `bash-logger/logging.sh` source lines, which currently
-appear once per `local/bin/*` wrapper. Every other finding is real.
+`core/logger-utils.sh` is the only file that sources the external logging library, and its
+`# shellcheck source=` directive points at this repo's own submodule,
+`vendor/bash-logger/logging.sh` (see `CLAUDE.md` "Sourcing and paths"). If the submodule isn't
+checked out (`git submodule update --init`), expect `SC1091: Not following: ... openBinaryFile:
+does not exist` for that line. Once it is, every finding is real.
 
 ### Confirm it actually behaves, not just parses
 
 There's no test harness. ShellCheck can't verify a function's runtime behavior (e.g. that
 `core::require_operands` actually rejects a missing operand, or that a `virsh::*` wrapper
 forwards its arguments correctly) — only that the shell syntax and common pitfalls are clean.
-After ShellCheck passes, validate by sourcing the file from within a consumer repo that has
-`bash-logger` vendored alongside bashkit (see `CLAUDE.md`), or by writing a throwaway script
+After ShellCheck passes, validate by sourcing the file directly once `vendor/bash-logger` is
+initialized (see `CLAUDE.md`), or by writing a throwaway script
 that defines stub versions of the logging API first (`init_logger`, `log_debug`/`log_info`/
 `log_warn`/`log_error`/`log_fatal`/`log_sensitive`, and whichever `ERROR_*`/`BOOLEAN_*`
 constants the file reads) — defining `init_logger` skips the fallback source — then sources the

@@ -14,11 +14,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Files inside this repo source their siblings **relative to their own location** via `${BASH_SOURCE[0]%/*}/<relative-path>`, so libs and `local/bin/*` wrappers work regardless of the caller's CWD. Never switch to CWD- or repo-root-relative paths.
 - Every dependency is sourced behind its double-inclusion guard (`readonly __BASHKIT_LIB_<DIR>_<FILE>_SOURCED="true"`, `__BASHKIT_BIN_<NAME>_SOURCED` for wrappers). Consumers check these names — **never rename a guard** without updating every consumer.
-- The one dependency *outside* this repo is the logging library, `bash-logger/logging.sh`, which supplies `init_logger`, `log_debug`/`log_info`/`log_warn`/`log_error`/`log_fatal`/`log_sensitive`, and the `ERROR_*`/`BOOLEAN_*` constants. Files load it only if `init_logger` isn't already defined, from a fixed offset that assumes a sibling submodule layout:
-  - libs: `${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh` (i.e. `<vendor>/bash-logger/` next to `<vendor>/bashkit/`)
-  - `local/bin/*`: `${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh`
+- The one dependency *outside* this repo is the logging library, `bash-logger/logging.sh`, which supplies `init_logger`, `log_debug`/`log_info`/`log_warn`/`log_error`/`log_fatal`/`log_sensitive`, and the `ERROR_*`/`BOOLEAN_*` constants. Nothing sources it by path; files call `core::logger_init` from `core/logger-utils.sh`, which does nothing if `init_logger` is already defined and otherwise sources the first `logging.sh` it finds, in this order:
+  1. `vendor/bash-logger/` — this repo's own submodule (`git submodule update --init`)
+  2. `~/.local/lib/bash-logger/`
+  3. `/usr/local/lib/bash-logger/`
 
-  So nothing here can be sourced standalone from this checkout — test from within a consumer repo that has `bash-logger` vendored alongside.
+  It then calls `init_logger --stderr-level DEBUG`, adding `--config <file>` when the environment picks one: `BASHKIT_LOG_CONFIG` (explicit path), else `logging-${BASHKIT_ENV}.conf`, else `logging.conf`, searched in `BASHKIT_LOG_CONFIG_DIR` or `${XDG_CONFIG_HOME:-~/.config}/bashkit` then `/etc/bashkit`.
 
 ## Structure
 
@@ -32,7 +33,9 @@ local/
   lib/bashkit/
     core/               # core::*  — contract-utils (fail, require_operands, require_pipestatus,
                         #            require_nameref, is_option_arg_dup, is_boolean,
-                        #            with_xtrace_suppressed, print_stack_trace), file-utils,
+                        #            with_xtrace_suppressed), logger-utils (logger_source,
+                        #            logger_config_path, logger_init, print_stack_trace,
+                        #            init_git_submodules_error; no dependencies), file-utils,
                         #            sha512sum-utils, yq-utils, bin-utils (sources local/bin/*)
     ignition/           # ignition::* — butane, merge (butane -> ignition JSON), validate, serve
     k3s/                # k3s::*   — cluster token generation
@@ -57,8 +60,8 @@ Each directory has an umbrella file named after it (`core/core.sh`, `virsh/virsh
 make install
 ```
 
-Copies `local/bin/*` to `~/.local/bin/` and recursively installs `local/lib/bashkit/**` (mode 644) into `~/.local/lib/bashkit/`, preserving subdirectories. The installed copies still need `bash-logger` resolvable at the relative offsets above, so the vendored-submodule layout remains the primary supported way to consume this repo.
+Copies `local/bin/*` to `~/.local/bin/` and recursively installs `local/lib/bashkit/**` (mode 644) into `~/.local/lib/bashkit/`, preserving subdirectories. Installed copies find `bash-logger` at `~/.local/lib/bash-logger/` or `/usr/local/lib/bash-logger/` (see *Sourcing and paths*); `make install` doesn't install it.
 
 ## Linting and validation
 
-There is no test harness (no bats, no pre-commit). Lint with `make lint`, which runs `shellcheck` over every shell file using the checked-in `.shellcheckrc` — the `linting-code` skill (`.claude/skills/linting-code/SKILL.md`) explains the enabled optional checks, how to lint from a consumer repo, and which `SC1091` findings to expect. Validate runtime behavior by sourcing the affected file from within a consumer repo that has `bash-logger` vendored, or behind a minimal stub of the logging API.
+There is no test harness (no bats, no pre-commit). Lint with `make lint`, which runs `shellcheck` over every shell file using the checked-in `.shellcheckrc` — the `linting-code` skill (`.claude/skills/linting-code/SKILL.md`) explains the enabled optional checks, how to lint from a consumer repo, and which `SC1091` findings to expect. Validate runtime behavior by sourcing the affected file directly once `vendor/bash-logger` is initialized, or behind a minimal stub of the logging API.
