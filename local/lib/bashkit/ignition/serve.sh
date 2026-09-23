@@ -90,21 +90,21 @@ ignition::serve() {
         readonly ssl_key="${OPTARG}"
         ;;
       h) ignition::usage_serve; return 0; ;;
-      :) log_error "-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING}"; ignition::usage_serve; return 1; ;;
-      ?) log_error "-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_UNKNOWN}"; ignition::usage_serve; return 1; ;;
+      :) log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; ignition::usage_serve; return 1; ;;
+      ?) log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; ignition::usage_serve; return 1; ;;
     esac
   done
   shift $((OPTIND - 1))
 
   if [[ -z "${ssl_cert}" ]]; then
     ignition::usage_serve
-    log_error "-c ${__BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING}"
+    log_error "-c ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
     return 1
   fi
 
   if [[ -z "${ssl_key}" ]]; then
     ignition::usage_serve
-    log_error "-k ${__BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING}"
+    log_error "-k ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
     return 1
   fi
 
@@ -178,7 +178,7 @@ ignition::serve() {
   fi
 }
 
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi

@@ -58,8 +58,8 @@ ignition::validate() {
         readonly workdir_mount_src="${OPTARG}"
         ;;
       h) ignition::usage_ignition_validate; return 0; ;;
-      :) ignition::usage_ignition_validate; log_error "-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING}"; return 1; ;;
-      ?) ignition::usage_ignition_validate; log_error "-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_UNKNOWN}"; return 1; ;;
+      :) ignition::usage_ignition_validate; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; return 1; ;;
+      ?) ignition::usage_ignition_validate; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; return 1; ;;
     esac
   done
   shift $((OPTIND - 1))
@@ -100,7 +100,7 @@ ignition::validate() {
 
 export -f ignition::validate
 
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi

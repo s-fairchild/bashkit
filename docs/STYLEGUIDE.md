@@ -107,7 +107,7 @@ readonly __BASHKIT_BIN_<NAME>_SOURCED="true"         # local/bin/<name>
 
 `<DIR>`, `<FILE>`, and `<NAME>` are the path parts in uppercase, with
 hyphens turned into underscores (for example,
-`__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED`).
+`__BASHKIT_CORE_CONTRACT_UTILS_SOURCED`).
 
 Consuming repos check these names. **Never rename a guard** unless you update
 every consumer at the same time.
@@ -118,7 +118,7 @@ every consumer at the same time.
   - Never assume a caller already loaded it:
 
     ```bash
-    if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+    if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
       # shellcheck source=../core/contract-utils.sh
       . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
     fi

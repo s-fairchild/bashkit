@@ -5,6 +5,14 @@
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
 readonly __BASHKIT_VIRSH_NETWORK_SOURCED="true"
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+fi
+
+#####################
+### Globals Start ###
+#####################
 
 readonly __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE="Active"
 readonly __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT="Persistent"

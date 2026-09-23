@@ -74,7 +74,7 @@ core::envsubst() {
       e) podman_env_options+=("${OPTARG}") ;;
       :)
         core::usage_envsubst
-        error_msg="-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_OPERAND_MISSING}"
+        error_msg="-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
         if declare -f log_error >/dev/null 2>&1; then
           log_error "${error_msg}"
         else
@@ -84,7 +84,7 @@ core::envsubst() {
         ;;
       ?)
         core::usage_envsubst
-        error_msg="-${OPTARG} ${__BASHKIT_CORE_LIB_ERROR_OPTION_UNKNOWN}"
+        error_msg="-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"
         if declare -f log_error >/dev/null 2>&1; then
           log_error "${error_msg}"
         else
@@ -136,7 +136,7 @@ core::envsubst() {
     "$@"
 }
 
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
     # shellcheck source=../lib/bashkit/core/logger-utils.sh
     . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"

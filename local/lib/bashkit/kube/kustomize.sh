@@ -34,7 +34,7 @@ kube::kustomize_build_apply() {
   core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi
