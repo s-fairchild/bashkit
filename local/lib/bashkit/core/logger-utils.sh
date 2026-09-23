@@ -3,8 +3,7 @@
 # Locates, sources, and initializes the external bash-logger library
 # (bash-logger/logging.sh) for bashkit libraries and wrappers:
 # core::logger_source, core::logger_config_path, and core::logger_init. Also
-# holds the diagnostics that must work before the logger is loaded:
-# core::print_stack_trace and core::init_git_submodules_error.
+# holds core::print_stack_trace, which must work before the logger is loaded.
 #
 # Everything here may run before the logger exists, so errors go to stderr
 # via `echo` rather than the logging API. This file has no dependencies;
@@ -24,7 +23,10 @@ readonly -a __BASHKIT_CORE_LOGGER_PATHS=(
 )
 
 # Where core::logger_config_path looks for config files, highest priority
-# first, unless BASHKIT_LOG_CONFIG_DIR is set.
+# first, after BASHKIT_LOG_CONFIG_DIR. bashkit's own .bashkit/ is relative to
+# this file (<bashkit>/local/lib/bashkit/core/ -> <bashkit>/.bashkit/), so a
+# checkout or vendored copy uses its own configs. Installed copies have no
+# .bashkit/ there and fall through to the user and system directories.
 readonly -a __BASHKIT_CORE_LOGGER_CONFIG_DIRS=(
   "${BASH_SOURCE[0]%/*}/../../../../.bashkit"
   "${XDG_CONFIG_HOME:-${HOME:-}/.config}/bashkit"
@@ -123,15 +125,21 @@ core::logger_source() {
 # environment and prints its path. The first match wins:
 #
 #   1. BASHKIT_LOG_CONFIG is set: that file. It must exist.
-#   2. BASHKIT_ENV is set (e.g. development, staging, production):
+#   2. BASHKIT_ENV is set (e.g. dev, test, ci, staging, prod):
 #      logging-${BASHKIT_ENV}.conf from the config directories below. One
 #      of them must have it.
 #   3. Neither is set: logging.conf from the config directories below, if
 #      one has it.
 #
-# The config directories are BASHKIT_LOG_CONFIG_DIR if it is set.
-# Otherwise they are ${XDG_CONFIG_HOME:-~/.config}/bashkit, then
-# /etc/bashkit, searched in that order.
+# The config directories are searched in this order, so a file in an
+# earlier one overrides the same file in a later one:
+#
+#   1. BASHKIT_LOG_CONFIG_DIR, if set (e.g. a consumer repo's own configs)
+#   2. <bashkit>/.bashkit, the configs in this bashkit checkout
+#   3. ${XDG_CONFIG_HOME:-~/.config}/bashkit (user; `make install` copies
+#      .bashkit/ here)
+#   4. /usr/local/etc/bashkit (local system)
+#   5. /etc/bashkit (system)
 #
 # Prints nothing and succeeds when no config applies, so the caller falls
 # back to bash-logger's defaults.
@@ -140,8 +148,8 @@ core::logger_source() {
 #   BASHKIT_LOG_CONFIG       Optional. Explicit path to a config file.
 #   BASHKIT_ENV              Optional. Environment name; letters, digits,
 #                            `.`, `_`, and `-` only.
-#   BASHKIT_LOG_CONFIG_DIR   Optional. The one directory to search, in place
-#                            of the defaults.
+#   BASHKIT_LOG_CONFIG_DIR   Optional. A directory searched before the
+#                            defaults.
 #   __BASHKIT_CORE_LOGGER_CONFIG_DIRS
 # Arguments:
 #   None.
@@ -168,12 +176,11 @@ core::logger_config_path() {
     return 1
   fi
 
-  local -a dirs
+  local -a dirs=()
   if [[ -n "${BASHKIT_LOG_CONFIG_DIR:-}" ]]; then
-    dirs=("${BASHKIT_LOG_CONFIG_DIR}")
-  else
-    dirs=("${__BASHKIT_CORE_LOGGER_CONFIG_DIRS[@]}")
+    dirs+=("${BASHKIT_LOG_CONFIG_DIR}")
   fi
+  dirs+=("${__BASHKIT_CORE_LOGGER_CONFIG_DIRS[@]}")
   readonly dirs
 
   local -r _env="${BASHKIT_ENV:-}"

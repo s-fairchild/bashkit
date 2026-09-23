@@ -14,10 +14,22 @@ lint: ## Lint all shell files with ShellCheck using .shellcheckrc (docs/STYLEGUI
 
 .PHONY: lint
 
-install: ## Install local/bin and local/lib/bashkit (recursively) into ~/.local
+install: ## Install local/bin and local/lib/bashkit into ~/.local, and .bashkit/ configs into ~/.config/bashkit
 	mkdir -p ~/.local/bin
 	install -v -t ~/.local/bin/ local/bin/*
 
 	while IFS= read -r -d '' file; do
 	  install -v -Dm644 "$${file}" "$${HOME}/.local/lib/bashkit/$${file#local/lib/bashkit/}"
 	done < <(find local/lib/bashkit -type f -print0)
+
+	# Never overwrite an installed config: it may hold local edits. Delete
+	# it and re-run `make install` to pick up the shipped version.
+	config_dir="$${XDG_CONFIG_HOME:-$${HOME}/.config}/bashkit"
+	while IFS= read -r -d '' file; do
+	  dest="$${config_dir}/$${file#.bashkit/}"
+	  if [[ -e "$${dest}" ]]; then
+	    echo "kept existing '$${dest}'"
+	  else
+	    install -v -Dm644 "$${file}" "$${dest}"
+	  fi
+	done < <(find .bashkit -type f -name '*.conf' -print0)

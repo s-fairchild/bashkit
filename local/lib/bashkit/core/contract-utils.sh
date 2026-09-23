@@ -2,9 +2,9 @@
 #
 # Argument/operand validation and getopts helpers shared across bashkit and
 # its consumers: core::fail, core::require_operands, core::is_option_arg_dup,
-# and core::with_xtrace_suppressed. core::print_stack_trace and
-# core::init_git_submodules_error live in logger-utils.sh, which this file
-# sources, so they work before the logger is loaded.
+# and core::with_xtrace_suppressed. core::print_stack_trace lives in
+# logger-utils.sh, which this file sources, so it works before the logger is
+# loaded.
 
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
@@ -99,7 +99,8 @@ core::require_pipestatus() {
   local status
   for status in "$@"; do
     (( status == 0 )) || {
-      core::fail "pipeline stage PIPESTATUS[${i}] exited ${status}: PIPESTATUS=($*)" || return
+      core::fail "pipeline stage PIPESTATUS[${i}] exited ${status}: PIPESTATUS=($*)" \
+        || return
     }
     (( ++i ))
   done
@@ -187,7 +188,7 @@ core::is_boolean() {
   boolean_values+="|${__BASHKIT_CORE_LIB_BOOLEAN_YES}|${__BASHKIT_CORE_LIB_BOOLEAN_NO}"
   readonly boolean_values
 
-  if ! [[ "$bool" =~ ^($boolean_values)$ ]]; then
+  if ! [[ "${bool}" =~ ^(${boolean_values})$ ]]; then
     log_error "${1} must match regex: ${boolean_values}"
     core::print_stack_trace
     return 1

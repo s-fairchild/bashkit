@@ -5,9 +5,9 @@ wrappers. There is no build step, package manifest, or test suite — every
 file is plain bash, sourced directly or run as a wrapper executable.
 
 `bashkit` is designed to be **vendored as a git submodule** into a consuming
-project (e.g. under `hack/vendor/bashkit/`), sitting alongside a sibling
-`bash-logger` submodule (e.g. `hack/vendor/bash-logger/`) whose `logging.sh`
-supplies the logging API every file here depends on:
+project (e.g. under `hack/vendor/bashkit/`). Every file here depends on the
+logging API from [`bash-logger`](https://github.com/s-fairchild/bash-logger)'s
+`logging.sh`:
 
 - `init_logger`
 - `log_debug`, `log_info`, `log_warn`, `log_error`, `log_fatal`, `log_sensitive`
@@ -16,10 +16,77 @@ supplies the logging API every file here depends on:
 Every file inside this repo sources its own siblings via
 `${BASH_SOURCE[0]%/*}/<relative-path>`, so `local/bin/*` wrappers and
 `local/lib/bashkit/**/*.sh` libraries work correctly regardless of the
-caller's CWD. The one exception is the dependency *out* of this repo: when
-`init_logger` isn't already defined, each file falls back to sourcing
-`bash-logger/logging.sh` at a fixed relative offset, which assumes the
-sibling-submodule vendoring layout described above.
+caller's CWD. If `init_logger` isn't already defined, `core::logger_init`
+(`core/logger-utils.sh`) sources the first `logging.sh` it finds:
+
+1. `vendor/bash-logger/` — bashkit's own submodule. Consumers need
+   `git submodule update --init --recursive` to check it out.
+2. `~/.local/lib/bash-logger/`
+3. `/usr/local/lib/bash-logger/`
+
+If a consumer loads and initializes `bash-logger` itself before sourcing
+bashkit, bashkit uses that setup as-is and ignores everything in
+[Logging configuration](#logging-configuration).
+
+## Logging configuration
+
+`core::logger_init` passes `init_logger --config <file>` when the
+environment selects a config file:
+
+1. `BASHKIT_LOG_CONFIG=/path/to/file.conf`: that exact file.
+2. `BASHKIT_ENV=<name>`: `logging-<name>.conf`.
+3. Neither set: `logging.conf`, if there is one; otherwise bash-logger's
+   defaults.
+
+It looks for the file in these directories and uses the first match, so an
+earlier directory overrides a later one:
+
+1. `BASHKIT_LOG_CONFIG_DIR`, if set
+2. bashkit's own [`.bashkit/`](.bashkit/): the `dev`, `test`, `ci`, `staging`,
+   and `prod` configs shipped in this repo
+3. `${XDG_CONFIG_HOME:-~/.config}/bashkit` (user; `make install` copies
+   `.bashkit/` here)
+4. `/usr/local/etc/bashkit` (local system)
+5. `/etc/bashkit` (system)
+
+A checkout or vendored copy of bashkit always finds its own `.bashkit/`
+first, so for the shipped environment names the user and system directories
+only matter to installed copies (`make install`), which have no `.bashkit/`
+beside them. To override a shipped config from a consumer repo, use
+`BASHKIT_LOG_CONFIG_DIR`.
+
+Setting `BASHKIT_ENV` to a name that has no `logging-<name>.conf` in any of
+these directories is an error. Every log level always goes to stderr, whatever
+the config says, so log lines never end up in a caller's `$(...)` capture.
+
+### Setting `BASHKIT_ENV`
+
+bashkit never sets `BASHKIT_ENV`; it only reads it. Set it from outside, as
+close to where the code runs as possible:
+
+- **Developing bashkit:** the committed [`.envrc`](.envrc) sets `dev` for
+  [direnv](https://direnv.net/). Install direnv, add its hook to your shell,
+  and run `direnv allow` once in the repo. Avoid exporting it from
+  `~/.bashrc`, which would apply to every project on the machine.
+- **CI (GitHub Actions):** set it in the workflow:
+
+  ```yaml
+  env:
+    BASHKIT_ENV: ci
+  ```
+
+- **Consumers:** set it the same ways in your own repo (your own `.envrc`,
+  your own workflow `env:`). Put your own `logging-<name>.conf` files in a
+  directory and point `BASHKIT_LOG_CONFIG_DIR` at it. Any environment you
+  don't provide a file for falls back to bashkit's `.bashkit/`. An entry
+  script that wants a default should keep outer values overridable:
+
+  ```bash
+  export BASHKIT_ENV="${BASHKIT_ENV:-prod}"
+  ```
+
+An outer setting always wins: `BASHKIT_ENV=dev ./script` overrides CI or
+`.envrc`, which override a script's default.
 
 ## Structure
 
@@ -34,9 +101,11 @@ local/
     core/
       core.sh                   # umbrella loader for this directory
       bin-utils.sh               # sources local/bin/{bw,coreos-installer,yq} for library-style use
-      contract-utils.sh          # core::require_operands, core::is_option_arg_dup,
-                                  # core::is_boolean, core::with_xtrace_suppressed,
-                                  # core::print_stack_trace, core::init_git_submodules_error
+      contract-utils.sh          # core::fail, core::require_{operands,pipestatus,nameref},
+                                  # core::is_option_arg_dup, core::is_boolean,
+                                  # core::with_xtrace_suppressed
+      logger-utils.sh            # core::logger_{source,config_path,init},
+                                  # core::print_stack_trace
       file-utils.sh               # core::file_read_builtin, core::file_read_preserve_newlines,
                                   # core::file_parse_extension
       sha512sum-utils.sh          # core::sha512sum wrapper + core::checksum_parse_hash
@@ -84,14 +153,15 @@ whole group, or a leaf file directly if you only need one piece.
 make install
 ```
 
-Copies `local/bin/*` to `~/.local/bin/` and recursively copies
-`local/lib/bashkit/**` to `~/.local/lib/bashkit/`, preserving subdirectory
-structure. This still requires `bash-logger/logging.sh` (see above) to
-be resolvable at the relative offset each file expects, so the vendored
-git-submodule layout — sourcing directly out of
-`hack/vendor/bashkit/local/lib/bashkit/...` next to
-`hack/vendor/bash-logger/` — is the primary supported way to consume
-this repo.
+Copies `local/bin/*` to `~/.local/bin/`, recursively copies
+`local/lib/bashkit/**` to `~/.local/lib/bashkit/` (preserving subdirectory
+structure), and copies `.bashkit/*.conf` to
+`${XDG_CONFIG_HOME:-~/.config}/bashkit/`. A config that is already installed
+is never overwritten, so local edits survive; delete it and re-run
+`make install` to get the shipped version again.
+
+`make install` doesn't install `bash-logger`. Installed copies look for it in
+`~/.local/lib/bash-logger/` or `/usr/local/lib/bash-logger/`.
 
 ## Conventions
 
@@ -133,5 +203,5 @@ This runs `shellcheck` over every shell file using the checked-in
 `docs/STYLEGUIDE.md`. See `.claude/skills/linting-code/SKILL.md` for details,
 including linting from within a consuming repo and the `SC1091` findings to
 expect standalone. Validate runtime behavior by sourcing the affected file
-from within a consumer repo that has `bash-logger` vendored alongside
-bashkit.
+directly once `vendor/bash-logger` is checked out
+(`git submodule update --init`).

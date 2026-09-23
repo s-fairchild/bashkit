@@ -19,11 +19,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   2. `~/.local/lib/bash-logger/`
   3. `/usr/local/lib/bash-logger/`
 
-  It then calls `init_logger --stderr-level DEBUG`, adding `--config <file>` when the environment picks one: `BASHKIT_LOG_CONFIG` (explicit path), else `logging-${BASHKIT_ENV}.conf`, else `logging.conf`, searched in `BASHKIT_LOG_CONFIG_DIR` or `${XDG_CONFIG_HOME:-~/.config}/bashkit` then `/etc/bashkit`.
+  It then calls `init_logger --stderr-level DEBUG`, adding `--config <file>` when the environment picks one: `BASHKIT_LOG_CONFIG` (explicit path), else `logging-${BASHKIT_ENV}.conf`, else `logging.conf`. The first directory that has the file wins: `BASHKIT_LOG_CONFIG_DIR` (if set), this repo's `.bashkit/` (`dev`, `test`, `ci`, `staging`, `prod`), `${XDG_CONFIG_HOME:-~/.config}/bashkit`, `/usr/local/etc/bashkit`, then `/etc/bashkit`. Installed copies have no `.bashkit/` beside them, so they use the user and system directories. A `BASHKIT_ENV` with no matching file anywhere is a hard error.
+- bashkit only *reads* `BASHKIT_ENV`; never set it inside a library. Development sets it through the committed `.envrc` (direnv, defaults to `dev`), CI through the workflow's `env:`, and consumers through their own environment. Anything that supplies a fallback uses `${BASHKIT_ENV:-default}`, so an outer value always wins.
 
 ## Structure
 
 ```
+.bashkit/               # shipped bash-logger configs: logging-{dev,test,ci,staging,prod}.conf
+.envrc                  # direnv: BASHKIT_ENV defaults to dev while working in this repo
+vendor/bash-logger/     # bash-logger submodule (the logging API every file depends on)
 local/
   bin/                  # wrapper executables; runnable directly OR sourceable (see core/bin-utils.sh)
     bw                  # flatpak Bitwarden CLI passthrough
@@ -34,8 +38,8 @@ local/
     core/               # core::*  — contract-utils (fail, require_operands, require_pipestatus,
                         #            require_nameref, is_option_arg_dup, is_boolean,
                         #            with_xtrace_suppressed), logger-utils (logger_source,
-                        #            logger_config_path, logger_init, print_stack_trace,
-                        #            init_git_submodules_error; no dependencies), file-utils,
+                        #            logger_config_path, logger_init, print_stack_trace;
+                        #            no dependencies), file-utils,
                         #            sha512sum-utils, yq-utils, bin-utils (sources local/bin/*)
     ignition/           # ignition::* — butane, merge (butane -> ignition JSON), validate, serve
     k3s/                # k3s::*   — cluster token generation
@@ -60,7 +64,7 @@ Each directory has an umbrella file named after it (`core/core.sh`, `virsh/virsh
 make install
 ```
 
-Copies `local/bin/*` to `~/.local/bin/` and recursively installs `local/lib/bashkit/**` (mode 644) into `~/.local/lib/bashkit/`, preserving subdirectories. Installed copies find `bash-logger` at `~/.local/lib/bash-logger/` or `/usr/local/lib/bash-logger/` (see *Sourcing and paths*); `make install` doesn't install it.
+Copies `local/bin/*` to `~/.local/bin/` and recursively installs `local/lib/bashkit/**` (mode 644) into `~/.local/lib/bashkit/`, preserving subdirectories. It also copies `.bashkit/*.conf` into `${XDG_CONFIG_HOME:-~/.config}/bashkit/`, skipping any file already there so local edits survive (delete a file to get the shipped version again). Installed copies find `bash-logger` at `~/.local/lib/bash-logger/` or `/usr/local/lib/bash-logger/` (see *Sourcing and paths*); `make install` doesn't install it.
 
 ## Linting and validation
 
