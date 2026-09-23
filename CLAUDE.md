@@ -30,11 +30,13 @@ local/
     envsubst            # envsubst via podman
     yq                  # docker.io/mikefarah/yq via podman
   lib/bashkit/
-    core/               # core::*  — contract-utils (require_operands, is_option_arg_dup, is_boolean,
+    core/               # core::*  — contract-utils (fail, require_operands, require_pipestatus,
+                        #            require_nameref, is_option_arg_dup, is_boolean,
                         #            with_xtrace_suppressed, print_stack_trace), file-utils,
                         #            sha512sum-utils, yq-utils, bin-utils (sources local/bin/*)
     ignition/           # ignition::* — butane, merge (butane -> ignition JSON), validate, serve
     k3s/                # k3s::*   — cluster token generation
+    kube/               # kube::*  — kubectl wait/apply/create/delete, kustomize build/build_apply
     openssl/            # openssl::* — private key / self-signed cert generation
     podman/             # podman::* — container, secret, volume, build helpers
     virsh/              # virsh::* — domain, network, pool/volume wrappers and *_is_* predicates

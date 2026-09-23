@@ -24,6 +24,8 @@ Google guide applies unchanged. Some common examples:
 - Declare function-scoped variables with `local`.
   - When the value comes from a command substitution, declare and assign
     separately (`local x; x="$(...)"`) so the exit status isn't masked.
+  - If the value must not change afterwards, follow the assignment with
+    `readonly x`.
 - Send error messages to stderr.
 
 Each section below says whether it is a **Difference** (it overrides a
@@ -137,9 +139,18 @@ every consumer at the same time.
     in practice nearly every sourcing line needs the directive.
   - A fully static path doesn't need one, but those should be rare here.
 - The logging library (`bash-logger`) lives outside this repo.
-  - Load it only if `init_logger` isn't defined yet, from the fixed
+  - A file that uses any `core::*` contract helper (`core::fail`,
+    `core::require_*`, …) sources `core/contract-utils.sh` and does **not**
+    load `bash-logger` itself. `contract-utils.sh` loads the logger.
+  - Only a file with no `core::` dependency loads the logger directly. It
+    loads it only if `init_logger` isn't defined yet, from the fixed
     sibling-submodule offset the file already uses.
-  - Then call `init_logger --name "$(basename "$0")"`.
+  - Initialize the logger with every level routed to stderr, so log lines
+    never end up in a caller's `$(...)` capture:
+
+    ```bash
+    init_logger --name "$(basename "$0")" --stderr-level DEBUG
+    ```
 
 ---
 
@@ -151,7 +162,7 @@ Google allows `::` package separators but doesn't require them. In bashkit,
 every public function **must** be namespaced after its library directory:
 
 ```
-core::*  ignition::*  k3s::*  openssl::*  podman::*  virsh::*
+core::*  ignition::*  k3s::*  kube::*  openssl::*  podman::*  virsh::*
 ```
 
 After the `::` comes lowercase `snake_case`, ordered as noun then verb
@@ -255,6 +266,9 @@ Leave a blank line after it. Three cases need something different:
 - If the function's stdout is its return value, send this line to stderr
   with `1>&2`.
   - That is, when callers capture its output with `$(...)`.
+  - bashkit's own logger setup already sends every level to stderr (§2.2).
+    A consumer may set up the logger differently, though, so keep the
+    redirect.
 - In `local/bin/*` wrappers, wrap the line in
   `if declare -f log_debug >/dev/null 2>&1; then ... fi`.
   - Wrappers may run without the logger loaded.
@@ -265,13 +279,16 @@ Check required positional operands with `core::require_operands`, and then
 copy them into read-only locals:
 
 ```bash
-core::require_operands 2 "$@" || return 1
+core::require_operands 2 "$@" || return
 local -r network="$1"
 local -r search="$2"
 ```
 
-- `|| return 1` is required.
+- `|| return` is required.
   - `core::require_operands` only returns from itself, not from its caller.
+  - Use a bare `|| return`, not `|| return 1`, after every `core::require_*`
+    check and every `core::fail` call. The caller then passes on whatever
+    status the helper produced instead of hardcoding one.
 - Don't use `${1?...}` or `${1?$(log_fatal ...)}` in new code.
 - Give optional operands a default.
   - For example, `local -r desc="${2:-}"`.
@@ -307,8 +324,24 @@ shift $((OPTIND - 1))
 ### 4.5 Returning versus exiting — *Addition*
 
 Library functions `return` and never `exit`. `log_fatal` is only for states
-that can't be recovered from. For bad input, prefer `log_error` followed by
-`return 1`, so the caller decides what happens.
+that can't be recovered from. For bad input or a failed command, call
+`core::fail` and return its status, so the caller decides what happens:
+
+```bash
+[[ -n "${input}" ]] || { core::fail "input cannot be empty string." || return; }
+```
+
+- `core::fail "<msg>"` logs `<caller>(): <msg>` at ERROR level, prints a
+  stack trace (`core::print_stack_trace`), and returns 1.
+  - Don't repeat the function name in `<msg>`. `core::fail` adds it.
+- Always follow it with `|| return` (§4.3), even inside a `case` arm.
+  - Write `core::fail "..." || return`, not `core::fail "..."; return`.
+- Use it instead of a `log_error` + `return 1` pair.
+  - Exception: code that must work before the logger is loaded
+    (`core::init_git_submodules_error`) uses `echo ... >&2`,
+    `core::print_stack_trace`, and `return 1` instead.
+  - Exception: getopts error arms (§4.4), which print usage and don't need a
+    stack trace.
 
 The one place `exit` is allowed is the `-h` branch of a `local/bin/*` wrapper
 that runs as a script.
@@ -325,6 +358,16 @@ function has to survive those options:
   - See §9 for the other rules on `&&`/`||` lists.
 - Suppress an expected non-zero status explicitly with `|| true`.
   - Add a comment explaining why.
+- Check every stage of a pipeline with `core::require_pipestatus`.
+  - Call it as the very next command, because any other command overwrites
+    `PIPESTATUS`.
+  - Don't put `|| ...` on the pipeline itself. That runs a command and
+    replaces `PIPESTATUS` before it can be checked.
+
+  ```bash
+  producer | consumer
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
+  ```
 
 ### 4.7 Temporary files — *Addition*
 
@@ -358,7 +401,33 @@ tmp="$(mktemp)"
 trap 'rm -f "${tmp}"' RETURN
 ```
 
-### 4.8 Wrappers and predicates — *Addition*
+### 4.8 Input from an operand or stdin — *Addition*
+
+A function that accepts its input as operands **or** on stdin checks the
+operands first:
+
+```bash
+local input
+if (( $# )); then
+  input="$*"
+elif [[ ! -t 0 ]]; then
+  input="$(cat)"
+else
+  core::fail "input cannot be null." || return
+fi
+readonly input
+
+[[ -n "${input}" ]] || { core::fail "input cannot be empty string." || return; }
+```
+
+- Test `(( $# ))` **before** `[[ ! -t 0 ]]`.
+  - Under cron, ssh, podman, or CI, stdin is not a TTY even when nothing is
+    piped in. Testing stdin first would ignore an explicit operand there.
+- Take all operands (`"$*"`), not just `$1`.
+- Reject empty input separately from missing input.
+- Document the operands as `$@` in the function comment.
+
+### 4.9 Wrappers and predicates — *Addition*
 
 - A thin `virsh`/`podman` wrapper only validates operands and runs the real
   command.
@@ -391,7 +460,10 @@ Google says to send errors to stderr. bashkit goes further and sends
 - Turn off xtrace before a command whose expanded arguments are sensitive.
   - Use `core::with_xtrace_suppressed save <var>`, and restore it
     afterwards.
-- Follow a failed contract check with `core::print_stack_trace`.
+- Report a failed contract check with `core::fail` (§4.5), which also prints
+  the stack trace.
+  - `core::print_stack_trace` writes to stderr, so it is safe inside a
+    function whose stdout is captured.
 
 ---
 
@@ -443,6 +515,11 @@ Google doesn't cover ShellCheck directives. In bashkit:
 - Check whether a command exists with `command -v`, not `which`.
 - Use `local -n` namerefs to pass arrays by name.
   - Document the parameter as a nameref in the function comment.
+  - Validate the name with `core::require_nameref <name> [a|A|-]` before
+    binding it.
+  - Prefix the function's own locals (for example `__crn_name`) so they
+    can't shadow the caller's variable. `core::require_nameref` can't detect
+    that kind of shadowing.
 - Break long pipelines with `\`.
   - Put `|` at the start of each continuation line, indented 2 spaces.
 
@@ -472,7 +549,7 @@ Both lines behave the same. The braced one makes the structure explicit:
 bash groups the operators.
 
 A single operator needs no braces. For example, `core::require_operands 1
-"$@" || return 1` and `[[ -n "${x}" ]] && y+=("${x}")` are fine. §4.6 still
+"$@" || return` and `[[ -n "${x}" ]] && y+=("${x}")` are fine. §4.6 still
 applies: a function must not end with `cond && cmd`.
 
 ### 9.2 Never mix `&&` and `||` without braces
@@ -511,13 +588,15 @@ Don't disable SC2015 (§7.1). Fix the code instead.
 ### 9.4 Brace groups, not subshells
 
 Group with `{ ...; }`, never `( ... )`. A subshell swallows `return` and
-`exit` and throws away variable assignments. So `a || ( log_error "x";
-return 1 )` does **not** return from the function.
+`exit` and throws away variable assignments. So `a || ( core::fail "x" ||
+return )` does **not** return from the function.
 
 A short group fits on one line. Write the closing `;` before `}`, and put
 `||` at the start of a continuation line:
 
 ```bash
+[[ -f "${file}" ]] || { core::fail "file not found: ${file}" || return; }
+
 core::is_option_arg_dup "${opt}" "${ignition}" \
   || { ignition::usage_serve; return 1; }
 ```
@@ -526,8 +605,8 @@ A longer group goes over several lines:
 
 ```bash
 [[ -n "${test_output:-}" ]] || {
-  log_error "${yaml_file} - ${yaml_key} is empty string."
-  return 1
+  core::fail "${yaml_file} - ${yaml_key} is empty string." \
+    || return
 }
 ```
 
@@ -544,10 +623,15 @@ another reason. Don't copy their patterns.
 | `ignition/{butane,ignition-validate,serve}.sh` | Header comment comes before `# shellcheck shell=bash` | §1.2 |
 | `local/bin/envsubst` | `# shellcheck shell=bash` instead of a shebang; lowercase guard `__bashkit_bin_envsubst_sourced` | §1.2, §2.1 |
 | `podman/podman.sh` | Guard is `__LIB_PODMAN_SOURCED`, missing the `__BASHKIT_` prefix | §2.1 |
-| `core/bin-utils.sh`, `core/yq-utils.sh`, `k3s/token-utils.sh` | No file header comment | §1.3 |
-| `core/yq-utils.sh`, `podman/podman-secret.sh` | `${1?...}` operand checks | §4.3 |
-| `core/sha512sum-utils.sh`, `openssl/cert-utils.sh`, `podman/podman-secret.sh` | `local -r x="$(...)"` | Google (declare and assign separately) |
+| `core/bin-utils.sh`, `core/yq-utils.sh`, `k3s/token-utils.sh`, `kube/{kube,kubectl,kustomize}.sh` | No file header comment | §1.3 |
+| `core/yq-utils.sh` | No xtrace hook | §1.4 |
+| `podman/podman-secret.sh` | `${1?...}` operand checks | §4.3 |
+| `openssl/cert-utils.sh`, `podman/podman-secret.sh` | `local -r x="$(...)"` | Google (declare and assign separately) |
 | `k3s/token-utils.sh` | `which`; function comment names don't match the functions (`k3s_gen_token*`) | §8, §4.1 |
 | Several files | Function comments missing `Globals:` or other sections | §4.1 |
 | `virsh/virsh-network.sh` | Dependency sourcing at the top of the file | §1.4 |
 | `virsh/virsh-network.sh` (`virsh::net_define`) | Writes the network XML to a `mktemp` file with no stated reason. `virsh net-define <(printf ...)` may work instead; test it before changing | §4.7 |
+| `core/sha512sum-utils.sh` | Function comments list arguments as `*) input - ...` instead of `$@` | §4.1 |
+| `core/contract-utils.sh` (`core::fail`, `core::require_nameref`, `core::is_valid_var_name`) | Missing or partial function comments; no entry logging | §4.1, §4.2 |
+| `kube/kubectl.sh` | `#######` banner comments; `kube::kubectl_wait` has no comment; `log_error` + `return 1` and `core::fail ...; return` instead of `core::fail ... \|\| return`; loads `bash-logger` directly although it sources `contract-utils.sh` | §4.1, §4.5, §2.2 |
+| `kube/kustomize.sh` | No function comments; unquoted `${cmd[@]}` behind `disable=SC2068` with no reason; loads `bash-logger` directly | §4.1, §7.1, §2.2 |
