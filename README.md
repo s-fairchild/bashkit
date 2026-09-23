@@ -6,20 +6,20 @@ file is plain bash, sourced directly or run as a wrapper executable.
 
 `bashkit` is designed to be **vendored as a git submodule** into a consuming
 project (e.g. under `hack/vendor/bashkit/`), sitting alongside a sibling
-`bash-logger-adapter` submodule (e.g. `hack/vendor/bash-logger-adapter/`)
-that supplies the logging/error API every file here depends on:
+`bash-logger` submodule (e.g. `hack/vendor/bash-logger/`) whose `logging.sh`
+supplies the logging API every file here depends on:
 
+- `init_logger`
 - `log_debug`, `log_info`, `log_warn`, `log_error`, `log_fatal`, `log_sensitive`
-- `core::require_operands`, `ERROR_*` constants, a `fatal()` helper
+- the `ERROR_*` and `BOOLEAN_*` constants
 
 Every file inside this repo sources its own siblings via
 `${BASH_SOURCE[0]%/*}/<relative-path>`, so `local/bin/*` wrappers and
 `local/lib/bashkit/**/*.sh` libraries work correctly regardless of the
-caller's CWD — including once installed standalone to `~/.local`. The one
-exception is the dependency *out* of this repo: each umbrella/leaf file
-falls back to sourcing `bash-logger-adapter/adapter.sh` (or `logging.sh`) at
-a fixed relative offset when the logging functions aren't already defined,
-which assumes the sibling-submodule vendoring layout described above.
+caller's CWD. The one exception is the dependency *out* of this repo: when
+`init_logger` isn't already defined, each file falls back to sourcing
+`bash-logger/logging.sh` at a fixed relative offset, which assumes the
+sibling-submodule vendoring layout described above.
 
 ## Structure
 
@@ -86,19 +86,19 @@ make install
 
 Copies `local/bin/*` to `~/.local/bin/` and recursively copies
 `local/lib/bashkit/**` to `~/.local/lib/bashkit/`, preserving subdirectory
-structure. This still requires the `bash-logger-adapter` shim (see above) to
+structure. This still requires `bash-logger/logging.sh` (see above) to
 be resolvable at the relative offset each file expects, so the vendored
 git-submodule layout — sourcing directly out of
 `hack/vendor/bashkit/local/lib/bashkit/...` next to
-`hack/vendor/bash-logger-adapter/` — is the primary supported way to consume
+`hack/vendor/bash-logger/` — is the primary supported way to consume
 this repo.
 
 ## Conventions
 
-Functions follow the [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html):
-2-space indentation, `[[ ]]` (never `[ ]`/`test`), quoted expansions, and a
-Description/Globals/Arguments/Outputs/Returns comment block above every
-function.
+Code follows the [Google Shell Style Guide](https://google.github.io/styleguide/shellguide.html),
+with bashkit-specific differences and additions documented in
+[`docs/STYLEGUIDE.md`](docs/STYLEGUIDE.md) — read it before contributing.
+In short:
 
 - Functions are namespaced by directory: `core::*`, `virsh::*`, `podman::*`,
   `ignition::*`, `k3s::*`, `openssl::*`.
@@ -127,5 +127,5 @@ with `shellcheck` directly — see `.claude/skills/linting-code/SKILL.md` for
 the full command reference, including how to lint from within a consuming
 repo (recommended, so its `.shellcheckrc` and sourced-file resolution apply)
 versus standalone. Validate runtime behavior by sourcing the affected file
-from within a consumer repo that has the `bash-logger-adapter` shim
-available.
+from within a consumer repo that has `bash-logger` vendored alongside
+bashkit.
