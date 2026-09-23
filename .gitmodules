@@ -1,0 +1,4 @@
+[submodule "vendor/bash-logger"]
+	path = vendor/bash-logger
+	url = git@github.com:s-fairchild/bash-logger.git
+	branch = main
