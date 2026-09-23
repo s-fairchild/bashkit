@@ -42,9 +42,10 @@ core::print_stack_trace() {
   local logger="echo"
   declare -f log_error >/dev/null 2>&1 && logger="log_error"
 
-  "${logger}" "Stack trace (most recent call first):"
+  # >&2 keeps the echo fallback out of callers' $(...) captures.
+  "${logger}" "Stack trace (most recent call first):" >&2
   for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
-    "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
+    "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})" >&2
   done
 }
 
@@ -243,7 +244,7 @@ core::is_boolean() {
 # Outputs:
 #   None.
 # Returns:
-#   Always 0 for "save"/"restore"; exits fatally on an unknown mode.
+#   Always 0 for "save"/"restore"; returns 1 on an unknown mode.
 core::with_xtrace_suppressed() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
@@ -269,7 +270,7 @@ core::with_xtrace_suppressed() {
       fi
       ;;
     *)
-      log_fatal "${ERROR_OPTION_UNKNOWN}: ${mode}"
+      core::fail "${ERROR_OPTION_UNKNOWN}: ${mode}" || return
       ;;
   esac
 }
@@ -290,21 +291,23 @@ core::with_xtrace_suppressed() {
 #   1 if $1 is unset/empty or does not exist as a file; 0 otherwise.
 # echo is intentionally used here in-case the logging submodule is unloaded
 core::init_git_submodules_error() {
-  f="${1:-}"
-  if [[ -z "$f" ]]; then
-    echo "${FUNCNAME[0]}() f=\$1 positional argument must be provided."
+  local f="${1:-}"
+
+  [[ -n "$f" ]] || {
+    # core::fail is not used to avoid calling log_error if the submodule is not present.
+    echo "${FUNCNAME[0]}(): \$1 cannot be null." >&2
     core::print_stack_trace
     return 1
-  fi
+  }
 
-  if [[ ! -f "${f}" ]]; then
-    # local msg="error: ${f} not found. "
-    local msg="${ERROR_FILE_NOT_FOUND}: ${f} "
+  [[ -f "${f}" ]] || {
+    local msg="${FUNCNAME[0]}(): file not found: ${f} "
     msg+="Run: git submodule update --init --recursive"
+    # core::fail is not used to avoid calling log_error if the submodule is not present.
     echo "${msg}" >&2
     core::print_stack_trace
     return 1
-  fi
+  }
 
   return 0
 }
@@ -323,5 +326,7 @@ if ! declare -f init_logger >/dev/null 2>&1; then
   . "$logging_sh"
   unset logging_sh
 
-  init_logger --name "$(basename "$0")"
+  # Route every level to stderr so log lines never pollute function output
+  # captured via $(...); bash-logger's default sends only ERROR+ to stderr.
+  init_logger --name "$(basename "$0")" --stderr-level DEBUG
 fi

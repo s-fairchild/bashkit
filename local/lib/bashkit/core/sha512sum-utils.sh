@@ -30,10 +30,7 @@ core::sha512sum() {
 core::sha512sum_gen_stdin() {
   log_debug "Starting ${FUNCNAME[0]}()"
 
-  if [[ -t 0 ]]; then
-    log_error "${FUNCNAME[0]}(): stdin cannot be null."
-    return 1
-  fi
+  [[ ! -t 0 ]] || { core::fail "stdin cannot be null." || return; }
 
   cat | core::sha512sum -
 }
@@ -49,10 +46,7 @@ core::sha512sum_gen_stdin() {
 core::sha512sum_check_stdin() {
   log_debug "Starting ${FUNCNAME[0]}()"
 
-  if [[ -t 0 ]]; then
-    log_error "${FUNCNAME[0]}(): stdin cannot be null."
-    return 1
-  fi
+  [[ ! -t 0 ]] || { core::fail "stdin cannot be null." || return; }
 
   local -ar sha512sum_check_options=(
     "--check"
@@ -69,7 +63,7 @@ core::sha512sum_check_stdin() {
 # Generates a sha512 checksum for $1, or stdin when $1 is omitted.
 #
 # Arguments:
-#   1) input - string (optional); data to hash. Read from stdin when omitted.
+#   *) input - string (optional); data to hash. Read from stdin when omitted.
 # Outputs:
 #   Writes `sha512sum_gen_stdin`'s output to stdout.
 # Returns:
@@ -77,16 +71,17 @@ core::sha512sum_check_stdin() {
 core::sha512sum_gen() {
   log_debug "Starting ${FUNCNAME[0]}()"
 
+  local input
   if (( $# )); then
-    log_debug "input from positional arg 1."
-    local -r input="$1"
+    log_debug "input from \$1"
+    input="$*"
   elif [[ ! -t 0 ]]; then
     log_debug "input from stdin."
-    local -r input="$(cat)"
+    input="$(cat)"
   else
-    log_error "${FUNCNAME[0]}(): stdin AND \$1 positional argument cannot be null."
-    return 1
+    core::fail "input cannot be null." || return
   fi
+  readonly input
 
   core::sha512sum_gen_stdin <<< "${input}"
 }
@@ -96,7 +91,7 @@ core::sha512sum_gen() {
 # Checks a sha512sum-formatted checksum line, from $1 or stdin, against the referenced file(s).
 #
 # Arguments:
-#   1) input - string (optional); a checksum line. Read from stdin when omitted.
+#   *) input - string (optional); a checksum line. Read from stdin when omitted.
 # Outputs:
 #   Whatever `sha512sum_check_stdin` writes to stdout/stderr.
 # Returns:
@@ -104,19 +99,17 @@ core::sha512sum_gen() {
 core::sha512sum_check() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
+  local input
   if (( $# )); then
-    local -r input="${1:-}"
+    input="$*"
   elif [[ ! -t 0 ]]; then
-    local -r input="$(cat)"
+    input="$(cat)"
   else
-    log_error "${FUNCNAME[0]}(): stdin AND \$1 positional argument cannot be null."
-    return 1
+    core::fail "input cannot be null." || return
   fi
+  readonly input
 
-  if [[ -z "${input}" ]]; then
-    log_error "\$1 and/or stdin cannot be empty string."
-    return 1
-  fi
+  [[ -n "${input}" ]] || { core::fail "input cannot be empty string." || return; }
 
   core::sha512sum_check_stdin <<< "${input}"
 }
@@ -127,7 +120,7 @@ core::sha512sum_check() {
 # "<hex>  -" from `sha512sum`'s output.
 #
 # Arguments:
-#   1) input - string; a checksum-tool output line.
+#   *) input - string; a checksum-tool output line.
 # Outputs:
 #   Writes the parsed hash value to stdout.
 # Returns:
@@ -135,25 +128,22 @@ core::sha512sum_check() {
 core::checksum_parse_hash() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
+  local input
   if (( $# )); then
-    local -r input="${1:-}"
+    input="$*"
   elif [[ ! -t 0 ]]; then
-    local -r input="$(cat)"
+    input="$(cat)"
   else
-    log_error "${FUNCNAME[0]}(): stdin AND \$1 positional argument cannot be null."
-    return 1
+    core::fail "input cannot be null." || return
   fi
+  readonly input
 
-  if [[ -z "${input}" ]]; then
-    log_error "\$1 and/or stdin cannot be empty string."
-    return 1
-  fi
+  [[ -n "${input}" ]] || { core::fail "input cannot be empty string." || return; }
 
-  local -r output="$(cut -d ' ' -f 1 <<< "${input}")"
-  if [[ -z "${output}" ]]; then
-    log_error "failed to parse checksum value."
-    return 1
-  fi
+  local output
+  output="$(cut -d ' ' -f 1 <<< "${input}")"
+  readonly output
+  [[ -n "${output}" ]] || { core::fail "failed to parse checksum value." || return; }
 
   printf "%s" "${output}"
 }
@@ -164,37 +154,33 @@ core::checksum_parse_hash() {
 # "sha512-<hex>" verification.hash value.
 #
 # Arguments:
-#   1) input - string (optional); a raw checksum-tool output line/digest. When omitted, read
+#   *) input - string (optional); a raw checksum-tool output line/digest. When omitted, read
 #      from stdin.
 # Outputs:
 #   Writes the "sha512-<hex>" formatted hash to stdout.
 # Returns:
-#   Non-zero if neither stdin nor $1 provided input.
+#   Non-zero if neither $1 nor stdin provided input.
 core::checksum_format_verification_hash_sha512() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  if [[ ! -t 0 ]]; then
-    local -r input="$(cat)"
-  elif (( $# )); then
-    local -r input="$1"
+
+  local input
+  if (( $# )); then
+    input="$*"
+  elif [[ ! -t 0 ]]; then
+    input="$(cat)"
   else
-    log_error "${FUNCNAME[0]}(): stdin AND \$1 positional argument cannot be null."
-    return 1
+    core::fail "input cannot be null." || return
   fi
+  readonly input
 
-  if [[ -z "${input}" ]]; then
-    log_error "\$1 and/or stdin cannot be empty string."
-    return 1
-  fi
+  [[ -n "${input}" ]] || { core::fail "input cannot be empty string." || return; }
 
-  printf "sha512-%s" "$(core::checksum_parse_hash "${input}")"
+  local hash
+  hash="$(core::checksum_parse_hash "${input}")" || return
+  printf "sha512-%s" "${hash}"
 }
 
-if ! declare -f init_logger >/dev/null 2>&1; then
-  # logging.sh should already be sourced by now.
-  # This is primarily present to provide shellcheck function definitions.
-  #
-  # shellcheck source=../../../../../bash-logger/logging.sh
-  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
-
-  init_logger --name "$(basename "$0")"
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi

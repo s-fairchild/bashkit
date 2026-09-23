@@ -23,27 +23,25 @@ readonly __BASHKIT_LIB_CORE_FILE_UTILS_SOURCED="true"
 # Returns:
 #   1 if no file/stdin was provided, or if the read result is empty.
 core::file_read_builtin() {
-  debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local input
-  if [[ -t 0 ]]; then
-    input="$(cat)"
-  elif (( $# )); then
+  if (( $# )); then
     input="$*"
+  elif [[ ! -t 0 ]]; then
+    input="$(cat)"
   else
-    log_error "${ERROR_ARG_REQUIRED}: "
-    return 1
+    core::fail "input cannot be null." || return
   fi
+  readonly input
   log_sensitive "$(declare -p input)"
+  [[ -n "${input}" ]] || { core::fail "input cannot be empty string." || return; }
 
   local output
   output="$(<"${input}")"
+  readonly output
   log_sensitive "$(declare -p output)"
-
-  if [[ -z "${output}" ]]; then
-    log_error "failed to read file ${1} into memory."
-    return 1
-  fi
+  [[ -n "${output:-}" ]] || { core::fail "failed to parse input file ${input} into output" || return; }
 
   printf "%s" "${output}"
 }
@@ -66,24 +64,22 @@ core::file_read_preserve_newlines() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local input
-  if [[ -t 0 ]]; then
-    input="$(cat)"
-  elif (( $# )); then
+  if (( $# )); then
     input="$*"
+  elif [[ ! -t 0 ]]; then
+    input="$(cat)"
   else
-    log_error "stdin or positional argument must be provided."
-    return 1
+    core::fail "input cannot be null." || return
   fi
+  readonly input
   log_sensitive "$(declare -p input)"
+  [[ -n "${input}" ]] || { core::fail "input cannot be empty string" || return; }
 
   local output
   IFS= read -r -d '' output < "${input}" || true
+  readonly output
   log_sensitive "$(declare -p output)"
-
-  if [[ -z "${output}" ]]; then
-    log_error "failed to read file ${1} into memory."
-    return 1
-  fi
+  [[ -n "${output:-}" ]] || { core::fail "failed to parse input file ${input} into output" || return; }
 
   printf "%s" "${output}"
 }
@@ -106,39 +102,36 @@ core::file_parse_extension() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   local input
-  if [[ -t 0 ]]; then
-    input="$(cat)"
-  elif (( $# )); then
+  if (( $# )); then
     input="$*"
+  elif [[ ! -t 0 ]]; then
+    input="$(cat)"
   else
-    log_error "stdin or positional argument must be provided."
-    return 1
+    core::fail "input cannot be null." || return
   fi
+  readonly input
   # DEBUG-level logging should be fine as this *should* only be a file
   # extension, but log_sensitive is used here just in case sensitive data
   # ends up here by accident.
   log_sensitive "$(declare -p input)"
+  [[ -n "${input}" ]] || { core::fail "input cannot be empty string" || return; }
 
   local output
   output="$(basename "${input}")"
   log_sensitive "$(declare -p output)"
   output="${output##*.}"
+  readonly output
   log_sensitive "$(declare -p output)"
 
-  if [[ -z "${output}" ]]; then
-    log_error "failed to parse checksum value."
-    return 1
-  fi
+  [[ -n "${output}" ]] || {
+    core::fail "failed to parse output. output is empty string." \
+      || return
+  }
 
   printf "%s" "${output}"
 }
 
-if ! declare -f init_logger >/dev/null 2>&1; then
-  # logging.sh should already be sourced by now.
-  # This is primarily present to provide shellcheck function definitions.
-  #
-  # shellcheck source=../../../../../bash-logger/logging.sh
-  . "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
-
-  init_logger --name "$(basename "$0")"
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi
