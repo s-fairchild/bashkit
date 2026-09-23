@@ -24,3 +24,8 @@ if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
 fi
+
+if [[ "${__BASHKIT_BIN_YQ_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../../../bin/yq
+  . "${BASH_SOURCE[0]%/*}/../../../bin/yq"
+fi
