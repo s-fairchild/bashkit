@@ -37,9 +37,14 @@ k3s::token_gen_shasum() {
   log_debug "Starting ${FUNCNAME[0]}()"
 
   # sha256sum produces 64 hex chars with no trailing spaces
+  #
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
   head -c 32 /dev/urandom \
   | sha256sum \
   | cut -d ' ' -f 1
+
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
 # k3s_gen_token()
@@ -57,14 +62,17 @@ k3s::token_gen() {
   log_debug "Starting ${FUNCNAME[0]}()"
 
   local -r error_prefix="failed to generate token with"
-  if which openssl > /dev/null 2>&1; then
+  if command -v openssl > /dev/null 2>&1; then
     k3s::token_gen_openssl || log_error "${error_prefix} openssl."
-  elif which tr > /dev/null 2>&1; then
-    log_warn "openssl not found. Falling back to tr."
+  elif command -v tr > /dev/null 2>&1; then
+    log_warn "Command openssl not found. Falling back to tr."
     k3s::token_gen_tr || log_error "${error_prefix} tr."
   else
-    log_warn "tr not found. Falling back to shasum."
-    k3s::token_gen_shasum || log_error "${error_prefix} shasum."
+    log_warn "command tr not found. Falling back to k3s::token_gen_shasum."
+    k3s::token_gen_shasum || {
+      log_error "${error_prefix} k3s::token_gen_shasum"
+      return 1
+    }
   fi
 }
 

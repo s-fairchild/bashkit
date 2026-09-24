@@ -76,10 +76,14 @@ podman::volume_export_untar_stdout() {
   local -r target="$2"
 
   log_info "Extracting ${target} to stdout from podman volume ${vol}."
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
   podman volume \
     export \
     "${vol}" \
     | tar x "${target}" -O
+
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
 if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then

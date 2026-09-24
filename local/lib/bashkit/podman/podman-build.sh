@@ -21,7 +21,7 @@ readonly PODMAN_BUILD_LOCAL_REGISTRY="localhost"
 # shellcheck disable=SC2034
 readonly PODMAN_BUILD_REMOTE_REGISTRY="docker.io"
 # shellcheck disable=SC2034
-readonly PODMAN_BUILD_IMAGE_TAG_LATEST="latest"
+readonly __BASHKIT_PODMAN_BUILD_IMAGE_TAG_LATEST="latest"
 
 # podman::build(build_opts ctx_dir)
 #
@@ -46,7 +46,10 @@ podman::build() {
   log_info "Adding option: ${opt_format_docker}"
   build_opts+=("${opt_format_docker}")
 
-  local -r opt_build_threads="--build-arg=BUILD_THREADS=$(nproc)"
+  local opt_build_threads
+  opt_build_threads="--build-arg=BUILD_THREADS=$(nproc)"
+  readonly opt_build_threads
+
   log_info "Adding option: ${opt_build_threads}"
   build_opts+=("${opt_build_threads}")
 
@@ -270,8 +273,14 @@ podman::build_add_additional_contexts() {
 #   0 always.
 podman::build_add_container_files_ordered() {
   # shellcheck disable=SC2178
-  local -n opts="$1"
-  local ctx="$2"
+  core::require_operands 2 "$@" || return
+  # It's used as an array because the nameref is expected to be an array type.
+  # shellcheck disable=SC2178
+  local -n opts="${1:-}"
+  local ctx="${2:-}"
+
+  core::require_nameref "${1:-}" || return
+  core::is_nameref_valid "${1:-}" || return
 
   if [[ ${opts[*]} =~ ('-f'|'--file') ]]; then
     log_warn "User provided Containerfiles found. Skipping addition of" \
@@ -279,19 +288,18 @@ podman::build_add_container_files_ordered() {
     return 0
   fi
 
-  # TODO Save containerfile list as a variable to log here. Pass this
-  # variable to mapfile.
-  # log_info "Building with Containerfiles: "
   log_info "Gathering Containerfile(s) from context directory: ${ctx}"
-  log_warn "Container files will be processed in version order."
-  local -r containerfile="Containerfile"
-  local -r opt_file="--file"
+  log_warn "Containerfiles will be processed in version order."
+
   mapfile -t -O "${#opts[@]}" "$1" < <(
     find "${ctx}" \
-      -iname "${containerfile}*" \
-      -printf "${opt_file}=%p\n" \
-    | sort --sort=version
+      -iname "Containerfile*" \
+      -printf "--file=%p\n" \
+      | sort --sort=version \
+      || true
   )
+
+  (( ${#opts[@]} )) && { core::fail "No Containerfiles* were found." || return; }
 }
 
 # podman::build_context_get(opts ctx)
@@ -370,7 +378,7 @@ podman::build_with_options() {
   podman::build_add_primary_tag "$1" \
     "${LOCAL_REPOSITORY}" \
     "${image}" \
-    "${image_tag_primary:-$PODMAN_BUILD_IMAGE_TAG_LATEST}"
+    "${image_tag_primary:-${__BASHKIT_PODMAN_BUILD_IMAGE_TAG_LATEST}}"
 
   podman::add_container_files_ordered "$1" "${context}"
   podman::build_add_arg_file "$1"

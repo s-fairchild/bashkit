@@ -114,6 +114,7 @@ core::require_pipestatus() {
 # type. Cannot detect shadowing by the caller's own locals -- prefix
 # nameref/local names in ref-taking functions to avoid that.
 core::require_nameref() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   core::require_operands 1 "$@" || return
   local -r __crn_name="$1"
   local -r __crn_want="${2:-}"
@@ -129,6 +130,16 @@ core::require_nameref() {
   }
   [[ "${__crn_decl}" == "declare -"*"${__crn_want}"* ]] || {
     core::fail "'${__crn_name}' is not of type -${__crn_want}." || return
+  }
+}
+
+core::is_nameref_valid() {
+  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  core::require_operands 1 "$@" || return
+  local -r __crn_name="${1:-}"
+
+  [[ -R "${__crn_name}" ]] || {
+    core::fail "'${__crn_name}' is not a valid nameref." || return
   }
 }
 

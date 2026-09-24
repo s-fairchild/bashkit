@@ -5,7 +5,7 @@
 
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
-readonly __BASHKIT_LIB_VIRSH_POOL_SOURCED="true"
+readonly __BASHKIT_VIRSH_POOL_SOURCED="true"
 if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
@@ -58,7 +58,10 @@ virsh::pool_build() {
   local -r name="$1"
 
   local pool_type
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
   pool_type="$(virsh pool-dumpxml "${name}" | grep -oP "(?<=<pool type=')[^']+")"
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
 
   case "${pool_type}" in
     fs | disk | logical)

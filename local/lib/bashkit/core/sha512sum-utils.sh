@@ -32,7 +32,10 @@ core::sha512sum_gen_stdin() {
 
   [[ ! -t 0 ]] || { core::fail "stdin cannot be null." || return; }
 
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
   cat | core::sha512sum -
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
 # core::sha512sum_check_stdin()

@@ -81,8 +81,13 @@ USAGE
 #   1 if stdin is empty or option-parsing fails.
 openssl::self_signed_cert_gen() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  local -r input="$(cat)"
-  [[ -z "${input:-}" ]] && log_fatal "Private key must be provided via stdin."
+  local input
+  input="$(cat)"
+  readonly input
+
+  [[ -n "${input:-}" ]] || {
+    core::fail "Private key must be provided via stdin." || return
+  }
 
   local -i days=1825
   local -a san_values
@@ -117,16 +122,14 @@ openssl::self_signed_cert_gen() {
         readonly san_values+=("${OPTARG}")
         log_sensitive "$(declare -p san_values)"
         ;;
-      h) openssl::usage_self_signed_cert_gen; return 0 ;;
+      h) openssl::usage_self_signed_cert_gen; return 0; ;;
       :)
         openssl::usage_self_signed_cert_gen
-        log_error "-${OPTARG} ${ERROR_OPTION_ARG_REQUIRED}"
-        return 1
+        core::fail "-${OPTARG} ${ERROR_OPTION_ARG_REQUIRED}" || return
         ;;
       ?)
         openssl::usage_self_signed_cert_gen
-        log_error "-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
-        return 1
+        core::fail "-${OPTARG} ${ERROR_OPTION_UNKNOWN}" || return
         ;;
     esac
   done

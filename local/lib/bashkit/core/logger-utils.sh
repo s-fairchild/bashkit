@@ -140,7 +140,7 @@ core::logger_source() {
       # logging.sh assigns its globals without `declare`, so sourcing it
       # from inside this function still defines them globally.
       #
-      # shellcheck source=../../../../vendor/bash-logger/logging.sh
+      # shellcheck source=/dev/null
       . "${candidate}"
       return
     fi

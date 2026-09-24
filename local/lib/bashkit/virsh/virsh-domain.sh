@@ -4,7 +4,7 @@
 
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
-readonly __BASHKIT_LIB_VIRSH_DOMAIN_SOURCED="true"
+readonly __BASHKIT_VIRSH_DOMAIN_SOURCED="true"
 
 # virsh::domain_define(xml_file)
 #
@@ -169,9 +169,12 @@ virsh::domain_is_defined() {
 #   0 if the domain's state is "running"; non-zero otherwise.
 virsh::domain_is_active() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-
   core::require_operands 1 "$@" || return
-  [[ "$(virsh domstate "$1" 2> /dev/null)" == "running" ]]
+  local state
+  state="$(virsh domstate "${1}" 2> /dev/null)"
+  readonly state
+
+  [[ "${state}" == "running" ]]
 }
 
 if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then

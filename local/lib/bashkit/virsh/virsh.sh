@@ -4,19 +4,19 @@
 #
 # Add new core library files to this file as they are created.
 
-readonly __BASHKIT_LIB_VIRSH_SOURCED="true"
+readonly __BASHKIT_VIRSH_SOURCED="true"
 
-if [[ "${__BASHKIT_LIB_VIRSH_DOMAIN_SOURCED:-}" ]]; then
+if [[ "${__BASHKIT_VIRSH_DOMAIN_SOURCED:-}" != "true" ]]; then
   # shellcheck source=virsh-domain.sh
   . "${BASH_SOURCE[0]%/*}/virsh-domain.sh"
 fi
 
-if [[ "${__BASHKIT_LIB_VIRSH_NETWORK_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKIT_VIRSH_NETWORK_SOURCED:-}" != "true" ]]; then
   # shellcheck source=virsh-network.sh
   . "${BASH_SOURCE[0]%/*}/virsh-network.sh"
 fi
 
-if [[ "${__BASHKIT_LIB_VIRSH_POOL_SOURCED:-}" != "true" ]]; then
+if [[ "${__BASHKI_VIRSH_POOL_SOURCED:-}" != "true" ]]; then
   # shellcheck source=virsh-pool.sh
   . "${BASH_SOURCE[0]%/*}/virsh-pool.sh"
 fi

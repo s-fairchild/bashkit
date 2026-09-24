@@ -15,15 +15,17 @@ kube::kubectl_wait() {
   [[ -n "${namespace}" ]] && msg+=" in namespace ${namespace} "
   msg+=" to become Available (timeout ${timeout})."
   readonly msg
-  log_info "$msg"
+  log_info "${msg}"
 
   if ! kubectl wait "${resource}" \
         -n "${namespace}" \
         --for=condition=Available \
         --timeout="${timeout}"; then
 
-    log_error "${resource} did not become Available within ${timeout}"
-    return 1
+    local msg="${FUNCNAME[0]}()"
+    msg+="${resource} did not become Available within ${timeout}"
+    readonly msg
+    core::fail "${msg}" || return
   fi
 }
 
@@ -49,13 +51,13 @@ kube::kubectl_file_op() {
 
   case "${operation}" in
     apply|create|delete) ;;
-    *) core::fail "unsupported operation: ${operation}"; return ;;
+    *) core::fail "${FUNCNAME[0]}(): unsupported operation: ${operation}"; return ;;
   esac
 
   local file="-"
   if (( $# > 0 )); then
     file="${1}"; shift
-    [[ -n "${file}" ]] || { core::fail "file operand is empty"; return; }
+    [[ -n "${file}" ]] || { core::fail "${FUNCNAME[0]}(): file operand is empty"; return; }
   fi
   readonly file
 
@@ -64,7 +66,10 @@ kube::kubectl_file_op() {
   readonly source_desc
 
   kubectl "${operation}" -f "${file}" "$@" \
-    || { core::fail "failed to ${operation} ${source_desc}" || return; }
+    || {
+      core::fail "${FUNCNAME[0]}(): failed to ${operation} ${source_desc}" \
+        || return
+    }
 }
 
 #######################################
@@ -75,9 +80,7 @@ kube::kubectl_file_op() {
 # Returns:
 #   0 on success, 1 on failure
 #######################################
-kube::kubectl_apply() {
-  kube::kubectl_file_op apply "$@"
-}
+kube::kubectl_apply() { kube::kubectl_file_op apply "$@" || return; }
 
 #######################################
 # Description:
@@ -87,9 +90,7 @@ kube::kubectl_apply() {
 # Returns:
 #   0 on success, 1 on failure
 #######################################
-kube::kubectl_create() {
-  kube::kubectl_file_op create "$@"
-}
+kube::kubectl_create() { kube::kubectl_file_op create "$@" || return; }
 
 #######################################
 # Description:
@@ -99,9 +100,7 @@ kube::kubectl_create() {
 # Returns:
 #   0 on success, 1 on failure
 #######################################
-kube::kubectl_delete() {
-  kube::kubectl_file_op delete "$@"
-}
+kube::kubectl_delete() { kube::kubectl_file_op delete "$@" || return; }
 
 if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh

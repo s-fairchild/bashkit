@@ -4,23 +4,11 @@
 
 [[ "${XTRACE:-0}" -eq 1 ]] && set -x
 
-readonly __BASHKIT_LIB_VIRSH_NETWORK_SOURCED="true"
-if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
-
-#####################
-### Globals Start ###
-#####################
+readonly __BASHKIT_VIRSH_NETWORK_SOURCED="true"
 
 readonly __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE="Active"
 readonly __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT="Persistent"
 readonly __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART="Autostart"
-
-###################
-### Globals End ###
-###################
 
 # virsh::net_define(name [description])
 #
@@ -230,9 +218,21 @@ virsh::net_parse_info() {
     return 1
   fi
 
+  # TODO replace local BOOLEAN_YES with ../core/boolean-utils.sh variable.
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
   virsh net-info "${network}" \
     | grep "${search}" \
     | tr -d ' ' \
     | cut -d : -f 2 \
-    | grep -q "$BOOLEAN_YES"
+    | grep -q "${BOOLEAN_YES}"
+
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
+
+if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../core/contract-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+fi
+
+# TODO source ../core/boolean-utils.sh once it's merged into this branch

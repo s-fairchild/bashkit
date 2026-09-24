@@ -6,6 +6,7 @@
 
 readonly __BASHKIT_LIB_PODMAN_SECRET_SOURCED="true"
 
+# TODO move these variables into forge, they are unused in this repo.
 readonly __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME="secrets/secrets.json"
 readonly __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME="secrets/filedriver/secretsdata.json"
 
@@ -20,7 +21,14 @@ readonly __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME="secrets/filedriver/se
 #   0 if the secret exists; `podman secret exists`'s exit status otherwise.
 podman::secret_exists() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  podman secret exists "$1"
+  core::require_operands 1 "$@" || return
+  local -r s="${1:-}"
+
+  [[ -n "${s}" ]] || {
+    core::fail "${FUNCNAME[0]}(s=\${1}) s=\$1 cannot be empty." || return
+  }
+
+  podman secret exists "${s}"
 }
 
 # podman::usage_secret_create_replace_from_stdin()
@@ -62,31 +70,39 @@ podman::secret_create_replace_from_stdin() {
   local opt OPTIND=1
   while getopts ':l:h' opt; do
     case "${opt}" in
-      h)
-        podman::usage_secret_create_replace_from_stdin
-        return 0
-        ;;
-      l)
-        extra_labels+=("${OPTARG}")
-        ;;
+      h) podman::usage_secret_create_replace_from_stdin; return 0; ;;
+      l) extra_labels+=("${OPTARG}"); ;;
       :)
         podman::usage_secret_create_replace_from_stdin
-        log_fatal "-${OPTARG} ${ERROR_OPTION_REQUIRED}"
+        core::fail "-${OPTARG} requires an operand." || return
         ;;
       ?)
         podman::usage_secret_create_replace_from_stdin
-        log_fatal "-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
+        core::fail "-${OPTARG} unknown option." || return
         ;;
     esac
   done
   shift $((OPTIND - 1))
+  readonly extra_labels
 
-  local -r secret_name="${1?$(log_fatal "${ERROR_OPERAND_REQUIRED}: \$1")}"
+  core::require_operands 1 "$@" || return
+  local -r secret_name="${1:-}"
 
-  local -r input="$(cat)"
-  [[ -z "${input}" ]] && log_fatal "input ${ERROR_STDIN_NULL}"
+  local input
+  input="$(cat)"
+  readonly input
+  [[ -n "${input}" ]] || {
+    core::fail "${FUNCNAME[0]}() stdin cannot be empty." || return
+  }
 
-  local -a labels=(
+  local -a labels=()
+  local remote_origin_url
+  if remote_origin_url="$(git config get remote.origin.url)"; then
+    readonly remote_origin_url
+    labels+=("--label=remote.origin.url=${remote_origin_url}")
+  fi
+
+  labels+=(
     "--label=generated-by-file=$(basename "$0")"
     "--label=generated-by-sourced-file=${BASH_SOURCE[0]}"
     "--label=generated-by-function=${FUNCNAME[0]}()"
@@ -96,16 +112,22 @@ podman::secret_create_replace_from_stdin() {
   for l in "${extra_labels[@]}"; do
     labels+=("--label=${l}")
   done
+  readonly labels
   log_debug "$(declare -p labels)"
 
   printf '%s' "${input}" \
     | podman secret \
-      create \
-      --replace \
-      "${labels[@]}" \
-      "${secret_name}" \
-      - \
-    || log_fatal "failed to create podman secret: ${secret_name}"
+        create \
+        --replace \
+        "${labels[@]}" \
+        "${secret_name}" \
+        - \
+    || {
+      local msg="${FUNCNAME[0]}() failed to create podman secret"
+      msg+=": ${secret_name}"
+      readonly msg
+      core::fail "${msg}" || return
+    }
 }
 
 # podman::secret_showsecret(name)
@@ -121,10 +143,14 @@ podman::secret_create_replace_from_stdin() {
 # Returns:
 #   Non-zero (via fatal) if the secret name is missing or empty.
 podman::secret_showsecret() {
-  log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  local -r s="${1?$(log_fatal "\$1 is unset. podman secret name must be provided.")}"
+  log_debug "Starting ${FUNCNAME[0]}()"
+  core::require_operands 1 "$@" || return
+  local -r s="${1:-}"
 
-  [[ -z "${s}" ]] && log_fatal "\$1 cannot be empty string."
+  [[ -n "${s}" ]] || {
+    log_error "${FUNCNAME[0]}(s="") s=\${1} cannot be empty string."
+    core::fail || return
+  }
 
   podman secret \
     inspect \
@@ -189,13 +215,11 @@ podman::secret_create_from_file() {
         ;;
       :)
         podman::usage_secret_create_from_file
-        log_error "-${OPTARG} ${ERROR_OPTION_ARG_REQUIRED}"
-        return 1
+        core::fail "-${OPTARG} ${ERROR_OPTION_ARG_REQUIRED}" || return
         ;;
       ?)
         podman::usage_secret_create_from_file
-        log_error "-${OPTARG} ${ERROR_OPTION_UNKNOWN}"
-        return 1
+        core::fail "-${OPTARG} ${ERROR_OPTION_UNKNOWN}" || return
         ;;
     esac
   done
@@ -233,7 +257,11 @@ podman::secret_create_from_file() {
       "${labels[@]}" \
       "${secret_name}" \
       "${f}" \
-      || log_fatal "failed to create podman secret: ${f}"
+      || {
+        local msg="${FUNCNAME[0]}() failed to create podman secret"
+        msg+=": ${f}"
+        core::fail "${msg}" || return
+      }
   done
 }
 
@@ -257,16 +285,26 @@ podman::secret_create_from_file() {
 podman::secret_gen_file_secretsdata() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  local -r input="$(cat)"
+  local input
+  input="$(cat)"
+  readonly input
   if [[ -t 0 ]]; then
     log_error "${ERROR_STDIN_NULL}"
     return 1
   fi
 
+  [[ -n "${input}" ]] || {
+    core::fail "${FUNCNAME[0]}() stdin cannot be empty." || return
+  }
+
   local -a secrets
   mapfile secrets <<< "${input}"
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
   podman secret inspect --showsecret "${secrets[@]}" \
     | jq -r 'map({(.ID): .SecretData}) | add'
+
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
 # podman::secret_filter_by_label(label value)
@@ -285,32 +323,49 @@ podman::secret_gen_file_secretsdata() {
 #   1 if the jq filter fails to parse, or no secret matches.
 podman::secret_filter_by_label() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+  core::require_operands 3 "$@" || return
+  local -r label="${1}"
+  local -r value="${2}"
+  local -n names_out="${3}"
 
-  core::require_operands 2 "$@" || return
-  local -r label="$1"
-  local -r value="$2"
-  log_debug "$(declare -p label)"
-  log_debug "$(declare -p value)"
+  core::require_nameref "${names_out}" || return
+  core::is_nameref_valid "${names_out}" || return
 
-  local -a secrets
-  readarray -t secrets < <(podman secret ls -q)
+  local -a secret_ids=()
+  readarray -t secret_ids < <(podman secret ls -q) || true
+  readonly secret_ids
   log_debug "$(declare -p secrets)"
 
-  local names
-  if ! names="$(podman secret inspect "${secrets[@]}" \
-    | jq -r --arg label "${label}" --arg value "${value}" \
-      '.[] | select(.Spec.Labels[$label] == $value) | .Spec.Name')"; then
-    log_error "failed to parse podman secret data with filter:" \
-      ".Spec.Labels[\"${label}\"] == \"${value}\""
-    return 1
-  elif [[ -z "${names}" ]]; then
-    log_error "no podman secret found with filter:" \
-      ".Spec.Labels[\"${label}\"] == \"${value}\""
-    return 1
-  fi
+  (( "${#secret_ids[@]}" )) || {
+    core::fail "No podman secret IDs could be found." || return
+  }
 
-  log_debug "$(declare -p names)"
-  printf "%s" "${names}"
+  # These are json variables not intended to be expanded by bash.
+  # shellcheck disable=SC2016
+  local -r jmes_query='.[] | select(.Spec.Labels[$label] == $value) | .Spec.Name'
+
+  # We want multiple names to be split into multiple elements here.
+  # shellcheck disable=SC2207
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
+  names_out=($(
+    podman secret inspect "${secret_ids[@]}" \
+      | jq -r \
+          --arg label "${label}" \
+          --arg value "${value}" \
+          "${jmes_query}"
+  )) || {
+    local msg="failed to parse podman secret data with filter:"
+    msg+=".Spec.Labels[\"${label}\"] == \"${value}\""
+    core::fail "${msg}" || return
+  }
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
+
+  if [[ -z "${names_out[*]}" ]]; then
+    local msg="no podman secret found with filter:"
+    msg+=".Spec.Labels[\"${label}\"] == \"${value}\""
+    core::fail "${msg}" || return
+  fi
 }
 
 if [[ "${__BASHKIT_LIB_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then

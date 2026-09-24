@@ -25,7 +25,11 @@ kube::kustomize_build() {
 kube::kustomize_build_apply() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
+  # kube::kubectl_apply positional args are optional.
   # shellcheck disable=SC2119
+  #
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
   kube::kustomize_build "$@" | kube::kubectl_apply
   core::require_pipestatus "${PIPESTATUS[@]}" || return
 }

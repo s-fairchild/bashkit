@@ -161,6 +161,9 @@ ignition::merge_compile_entry() {
   # printf '%s' (no trailing newline) -- the hash must cover the exact bytes that get
   # embedded, or Ignition rejects the merge config with a verification hash mismatch.
   # shellcheck disable=SC2034,SC2119
+  #
+  # PIPESTATUS is checked by core::require_pipestatus below.
+  # shellcheck disable=SC2312
   if ! verification_hash_out="$(printf '%s' "${ignition_json_out}" \
     | core::sha512sum_gen_stdin \
     | core::checksum_format_verification_hash_sha512)"; then
@@ -168,6 +171,8 @@ ignition::merge_compile_entry() {
     log_error "failed to generate verification hash for: ${butane_file_path}"
     return 1
   fi
+
+  core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
 # ignition_merge_write_entry()
@@ -331,7 +336,8 @@ ignition::gen_config_merge_inlines() {
     return 1
   fi
   log_info "Config ok"
-  log_info "Config size: $(wc -c <<< "${ignition_out}") bytes"
+  config_bytes="$(wc -c <<< "${ignition_out}")"
+  log_info "Config size: ${config_bytes} bytes"
 
   # shellcheck disable=SC2034
   out="${ignition_out}"
