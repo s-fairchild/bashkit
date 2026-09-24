@@ -145,6 +145,9 @@ every consumer at the same time.
   - Only a file with no `core::` dependency loads the logger itself. It does
     so through `core/logger-utils.sh`, never by sourcing `logging.sh` by
     path:
+  - Only a file with no `core::` dependency loads the logger itself. It does
+    so through `core/logger-utils.sh`, never by sourcing `logging.sh` by
+    path:
 
     ```bash
     if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then

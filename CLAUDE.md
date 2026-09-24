@@ -37,6 +37,10 @@ local/
     yq                  # docker.io/mikefarah/yq via podman
   lib/bashkit/
     core/               # core::*  — contract-utils (fail, require_operands, require_pipestatus,
+                        #            require_nameref, is_option_arg_dup, is_boolean,
+                        #            with_xtrace_suppressed), logger-utils (logger_source,
+                        #            logger_config_path, logger_init, print_stack_trace,
+                        #            init_git_submodules_error; no dependencies), file-utils,
                         #            require_nameref, is_option_arg_dup,
                         #            with_xtrace_suppressed), boolean-utils (is_boolean,
                         #            __BASHKIT_CORE_BOOLEAN_* constants), logger-utils (logger_source,
@@ -66,8 +70,10 @@ Each directory has an umbrella file named after it (`core/core.sh`, `virsh/virsh
 make install
 ```
 
+Copies `local/bin/*` to `~/.local/bin/` and recursively installs `local/lib/bashkit/**` (mode 644) into `~/.local/lib/bashkit/`, preserving subdirectories. Installed copies find `bash-logger` at `~/.local/lib/bash-logger/` or `/usr/local/lib/bash-logger/` (see *Sourcing and paths*); `make install` doesn't install it.
 Copies `local/bin/*` to `~/.local/bin/` and recursively installs `local/lib/bashkit/**` (mode 644) into `~/.local/lib/bashkit/`, preserving subdirectories. It also copies `.bashkit/*.conf` into `${XDG_CONFIG_HOME:-~/.config}/bashkit/`, skipping any file already there so local edits survive (delete a file to get the shipped version again). Installed copies find `bash-logger` at `~/.local/lib/bash-logger/` or `/usr/local/lib/bash-logger/` (see *Sourcing and paths*); `make install` doesn't install it.
 
 ## Linting and validation
 
+There is no test harness (no bats, no pre-commit). Lint with `make lint`, which runs `shellcheck` over every shell file using the checked-in `.shellcheckrc` — the `linting-code` skill (`.claude/skills/linting-code/SKILL.md`) explains the enabled optional checks, how to lint from a consumer repo, and which `SC1091` findings to expect. Validate runtime behavior by sourcing the affected file directly once `vendor/bash-logger` is initialized, or behind a minimal stub of the logging API.
 There is no test harness (no bats, no pre-commit). Lint with `make lint`, which runs `shellcheck` over every shell file using the checked-in `.shellcheckrc` — the `linting-code` skill (`.claude/skills/linting-code/SKILL.md`) explains the enabled optional checks, how to lint from a consumer repo, and which `SC1091` findings to expect. Validate runtime behavior by sourcing the affected file directly once `vendor/bash-logger` is initialized, or behind a minimal stub of the logging API.

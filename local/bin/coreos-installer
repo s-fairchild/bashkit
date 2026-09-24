@@ -135,14 +135,13 @@ core::coreos-installer() {
 }
 
 
+if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=../lib/bashkit/core/logger-utils.sh
+  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"
+fi
+core::logger_init --name "$(basename "$0"):core::coreos-installer()"
+
 if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-    # shellcheck source=../lib/bashkit/core/logger-utils.sh
-    . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"
-  fi
-
-  core::logger_init --name "$(basename "$0"):core::coreos-installer()"
-
   # shellcheck source=../lib/bashkit/core/contract-utils.sh
   . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/contract-utils.sh"
 fi
