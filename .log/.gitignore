@@ -1,0 +1,3 @@
+# Local log files (BASHKIT_LOG_FILE, set by .envrc). Only this file is tracked.
+*
+!.gitignore

@@ -19,14 +19,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   2. `~/.local/lib/bash-logger/`
   3. `/usr/local/lib/bash-logger/`
 
-  It then calls `init_logger --stderr-level DEBUG`, adding `--config <file>` when the environment picks one: `BASHKIT_LOG_CONFIG` (explicit path), else `logging-${BASHKIT_ENV}.conf`, else `logging.conf`. The first directory that has the file wins: `BASHKIT_LOG_CONFIG_DIR` (if set), this repo's `.bashkit/` (`dev`, `test`, `ci`, `staging`, `prod`), `${XDG_CONFIG_HOME:-~/.config}/bashkit`, `/usr/local/etc/bashkit`, then `/etc/bashkit`. Installed copies have no `.bashkit/` beside them, so they use the user and system directories. A `BASHKIT_ENV` with no matching file anywhere is a hard error.
-- bashkit only *reads* `BASHKIT_ENV`; never set it inside a library. Development sets it through the committed `.envrc` (direnv, defaults to `dev`), CI through the workflow's `env:`, and consumers through their own environment. Anything that supplies a fallback uses `${BASHKIT_ENV:-default}`, so an outer value always wins.
+  It then calls `init_logger --stderr-level DEBUG`, adding `--config <file>` when the environment picks one: `BASHKIT_LOG_CONFIG` (explicit path), else `logging-${BASHKIT_ENV}.conf`, else `logging.conf`. The first directory that has the file wins: `BASHKIT_LOG_CONFIG_DIR` (if set), this repo's `.bashkit/` (`dev`, `test`, `ci`, `staging`, `prod`), `${XDG_CONFIG_HOME:-~/.config}/bashkit`, `/usr/local/etc/bashkit`, then `/etc/bashkit`. Installed copies have no `.bashkit/` beside them, so they use the user and system directories. A `BASHKIT_ENV` with no matching file anywhere is a hard error. If `BASHKIT_LOG_FILE` is set it also passes `--log "${BASHKIT_LOG_FILE}"`; shipped configs never set `log_file`, because bash-logger requires it to be absolute and consumers would inherit it.
+- bashkit only *reads* `BASHKIT_ENV` and `BASHKIT_LOG_FILE`; never set them inside a library. Development sets them through the committed `.envrc` (direnv, defaults to `dev`), CI through the workflow's `env:`, and consumers through their own environment. Anything that supplies a fallback uses `${BASHKIT_ENV:-default}`, so an outer value always wins.
 
 ## Structure
 
 ```
 .bashkit/               # shipped bash-logger configs: logging-{dev,test,ci,staging,prod}.conf
-.envrc                  # direnv: BASHKIT_ENV defaults to dev while working in this repo
+.envrc                  # direnv: BASHKIT_ENV defaults to dev, BASHKIT_LOG_FILE to .log/${BASHKIT_ENV}.log
+.log/                   # local log files; only its .gitignore is tracked
 vendor/bash-logger/     # bash-logger submodule (the logging API every file depends on)
 local/
   bin/                  # wrapper executables; runnable directly OR sourceable (see core/bin-utils.sh)
@@ -38,8 +39,8 @@ local/
     core/               # core::*  — contract-utils (fail, require_operands, require_pipestatus,
                         #            require_nameref, is_option_arg_dup, is_boolean,
                         #            with_xtrace_suppressed), logger-utils (logger_source,
-                        #            logger_config_path, logger_init, print_stack_trace;
-                        #            no dependencies), file-utils,
+                        #            logger_config_path, logger_init, logger_resolve,
+                        #            print_stack_trace; no dependencies), file-utils,
                         #            sha512sum-utils, yq-utils, bin-utils (sources local/bin/*)
     ignition/           # ignition::* — butane, merge (butane -> ignition JSON), validate, serve
     k3s/                # k3s::*   — cluster token generation

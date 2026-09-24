@@ -88,6 +88,20 @@ close to where the code runs as possible:
 An outer setting always wins: `BASHKIT_ENV=dev ./script` overrides CI or
 `.envrc`, which override a script's default.
 
+### Logging to a file
+
+Set `BASHKIT_LOG_FILE` to also write log lines to a file. `core::logger_init`
+passes it to `init_logger --log`, which overrides any `log_file` in the config
+and creates the file's directory if needed. Unset, logs only go to stderr
+(and the journal, if the config enables it).
+
+- **Developing bashkit:** `.envrc` sets it to `.log/${BASHKIT_ENV}.log` in
+  the checkout (`.log/dev.log` by default). `.log/` is committed but its
+  contents are git-ignored.
+- **Consumers:** set it the same way as `BASHKIT_ENV`, or put an absolute
+  `log_file = ...` in your own config. A config file's `log_file` must be an
+  absolute path, which is why bashkit's shipped configs don't set one.
+
 ## Structure
 
 ```
@@ -104,7 +118,7 @@ local/
       contract-utils.sh          # core::fail, core::require_{operands,pipestatus,nameref},
                                   # core::is_option_arg_dup, core::is_boolean,
                                   # core::with_xtrace_suppressed
-      logger-utils.sh            # core::logger_{source,config_path,init},
+      logger-utils.sh            # core::logger_{source,config_path,init,resolve},
                                   # core::print_stack_trace
       file-utils.sh               # core::file_read_builtin, core::file_read_preserve_newlines,
                                   # core::file_parse_extension

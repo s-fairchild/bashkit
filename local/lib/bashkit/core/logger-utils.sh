@@ -3,7 +3,8 @@
 # Locates, sources, and initializes the external bash-logger library
 # (bash-logger/logging.sh) for bashkit libraries and wrappers:
 # core::logger_source, core::logger_config_path, and core::logger_init. Also
-# holds core::print_stack_trace, which must work before the logger is loaded.
+# holds core::logger_resolve and core::print_stack_trace, which must work
+# before the logger is loaded.
 #
 # Everything here may run before the logger exists, so errors go to stderr
 # via `echo` rather than the logging API. This file has no dependencies;
@@ -34,6 +35,45 @@ readonly -a __BASHKIT_CORE_LOGGER_CONFIG_DIRS=(
   "/etc/bashkit"
 )
 
+core::_echo_stderr() {
+  echo "$*" >&2
+}
+
+# core::logger_resolve(level)
+#
+# Prints the command to log a message at <level>: `log_<level>` if
+# bash-logger has defined it, otherwise `echo`. Callers run the result with
+# `>&2`, so the fallback also goes to stderr:
+#
+#   local logger
+#   logger="$(core::logger_resolve error)"
+#   "${logger}" "message" >&2
+#
+# Globals:
+#   None.
+# Arguments:
+#   $1   The bash-logger level, e.g. debug, info, warn, error.
+# Outputs:
+#   The command name on stdout. An error and stack trace to stderr if <level>
+#   is missing or empty.
+# Returns:
+#   1 if <level> is missing or empty; 0 otherwise.
+core::logger_resolve() {
+  if declare -f log_debug >/dev/null 2>&1; then
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))" 1>&2
+  fi
+  local -r level="${1:-info}"
+
+  local logger_out
+  if declare -f "log_${level}" >/dev/null 2>&1; then
+    readonly logger_out="log_${level}"
+  else
+    readonly logger_out="core::_echo_stderr"
+  fi
+
+  printf "%s" "${logger_out}"
+}
+
 # core::print_stack_trace()
 #
 # Logs the current bash call stack at LOG_LEVEL_ERROR, deepest frame first
@@ -53,13 +93,10 @@ readonly -a __BASHKIT_CORE_LOGGER_CONFIG_DIRS=(
 # Returns:
 #   Always 0.
 core::print_stack_trace() {
-  local logger
   # TODO switch this to log_debug or another facility?
-  if declare -f log_error >/dev/null 2>&1; then
-    logger="log_error"
-  else
-    logger="echo"
-  fi
+  local logger
+  logger="$(core::logger_resolve error)"
+  readonly logger
 
   local -i i
   # >&2 keeps the echo fallback out of callers' $(...) captures.
@@ -220,15 +257,21 @@ core::logger_config_path() {
 # with core::logger_source, then calls `init_logger` with:
 #
 #   - `--config <file>`, when core::logger_config_path picks one;
+#   - `--log "${BASHKIT_LOG_FILE}"`, when BASHKIT_LOG_FILE is set. A config
+#     file's `log_file` must be an absolute path, so a per-checkout path
+#     (like the one bashkit's .envrc sets) has to come from the environment;
 #   - `--stderr-level DEBUG`, so log lines never end up in a caller's
 #     `$(...)` capture;
 #   - the operands, passed through (e.g. `--name "$(basename "$0")"`).
 #
 # bash-logger applies command-line options over the config file, so the
-# config can't change the stderr level or any option passed as an operand.
+# config can't change the log file, the stderr level, or any option passed
+# as an operand. An operand overrides BASHKIT_LOG_FILE.
 #
 # Globals:
-#   See core::logger_source and core::logger_config_path.
+#   BASHKIT_LOG_FILE   Optional. File to also write log lines to;
+#                      bash-logger creates its directory if needed.
+#   See also core::logger_source and core::logger_config_path.
 # Arguments:
 #   $@   Optional. Extra options for `init_logger`.
 # Outputs:
@@ -250,6 +293,9 @@ core::logger_init() {
   local -a options=()
   if [[ -n "${config}" ]]; then
     options+=("--config" "${config}")
+  fi
+  if [[ -n "${BASHKIT_LOG_FILE:-}" ]]; then
+    options+=("--log" "${BASHKIT_LOG_FILE}")
   fi
   options+=("--stderr-level" "DEBUG" "$@")
   readonly options

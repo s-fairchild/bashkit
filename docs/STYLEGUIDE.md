@@ -161,6 +161,9 @@ every consumer at the same time.
     `/usr/local/lib/bash-logger/`.
   - It passes `init_logger` the config file the environment selects
     (`BASHKIT_LOG_CONFIG`, `BASHKIT_ENV`; see `core::logger_config_path`).
+  - It passes `--log "${BASHKIT_LOG_FILE}"` when that variable is set.
+    Shipped `.bashkit/` configs don't set `log_file`: bash-logger requires
+    an absolute path there, and consumers would inherit it.
   - It always routes every level to stderr (`--stderr-level DEBUG`), so log
     lines never end up in a caller's `$(...)` capture. A config file can't
     override this.
