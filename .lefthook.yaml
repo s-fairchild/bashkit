@@ -1,0 +1,15 @@
+# https://lefthook.dev/configuration/
+glob_matcher: doublestar
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob:
+        - "**/*.sh"
+        - "**/*.env"
+        - "**/*.envrc"
+        - "local/bin/*"
+      exclude:
+        - vendor/*
+      run: shellcheck "{staged_files}"
