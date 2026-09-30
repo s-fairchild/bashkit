@@ -263,7 +263,7 @@ ignition::gen_config_merge_inlines() {
   local -r secrets="${3:-"${__empty_array_ref}"}"
 
   if [[ ! -f "${butane_path}" ]]; then
-    log_error "${ERROR_FILE_NOT_FOUND}: ${butane_path}"
+    log_error "${__BASHKIT_CORE_ERROR_FILE_NOT_FOUND}: ${butane_path}"
     return 1
   fi
 

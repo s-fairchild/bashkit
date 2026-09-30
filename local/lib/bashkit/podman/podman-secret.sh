@@ -215,11 +215,12 @@ podman::secret_create_from_file() {
         ;;
       :)
         podman::usage_secret_create_from_file
-        core::fail "-${OPTARG} ${ERROR_OPTION_ARG_REQUIRED}" || return
+        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED}" \
+          || return
         ;;
       ?)
         podman::usage_secret_create_from_file
-        core::fail "-${OPTARG} ${ERROR_OPTION_UNKNOWN}" || return
+        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}" || return
         ;;
     esac
   done
@@ -289,7 +290,7 @@ podman::secret_gen_file_secretsdata() {
   input="$(cat)"
   readonly input
   if [[ -t 0 ]]; then
-    log_error "${ERROR_STDIN_NULL}"
+    log_error "${__BASHKIT_CORE_ERROR_STDIN_NULL}"
     return 1
   fi
 

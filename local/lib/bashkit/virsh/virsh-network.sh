@@ -202,10 +202,11 @@ virsh::net_autostart() {
 #   $2   Field name to search for; must be one of the __NETWORK_KEY_*
 #        constants.
 # Outputs:
-#   An error if $2 is not a recognized field name.
+#   An error if $2 is not a recognized field name, and an error and stack
+#   trace if `virsh net-info` or the parsing before the final match fails.
 # Returns:
-#   1 if $2 is unrecognized; otherwise 0 if the field's value is "yes",
-#   non-zero otherwise.
+#   0 if the field's value is exactly "yes"; 1 if it isn't, if $2 is
+#   unrecognized, or if `virsh net-info` or the parsing fails.
 virsh::net_parse_info() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
@@ -223,16 +224,18 @@ virsh::net_parse_info() {
     return 1
   fi
 
-  # TODO replace local BOOLEAN_YES with ../core/boolean-utils.sh variable.
   # PIPESTATUS is checked by core::require_pipestatus below.
   # shellcheck disable=SC2312
   virsh net-info "${network}" \
     | grep "${search}" \
     | tr -d ' ' \
     | cut -d : -f 2 \
-    | grep -q "${BOOLEAN_YES}"
+    | grep -qx "${__BASHKIT_CORE_BOOLEAN_YES}"
+  local -ar status=("${PIPESTATUS[@]}")
 
-  core::require_pipestatus "${PIPESTATUS[@]}" || return
+  # The last stage's status is the answer, so only the others must be 0.
+  core::require_pipestatus "${status[@]:0:4}" || return
+  return "${status[4]}"
 }
 
 if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then

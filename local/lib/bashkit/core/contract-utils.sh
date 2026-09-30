@@ -20,7 +20,7 @@ core::fail() {
 #
 # Validates that the caller's first <count> positional parameters are set
 # (present, even if empty -- matches this repo's `${N?...}` unset-only
-# convention, not `-z`). Logs "$N <ERROR_OPERAND_REQUIRED>" for the first
+# convention, not `-z`). Logs "$N operand is required." for the first
 # missing one and returns 1.
 #
 # `return` here only unwinds core::require_operands itself, not its caller --
@@ -35,7 +35,7 @@ core::fail() {
 #   }
 #
 # Globals:
-#   ERROR_OPERAND_REQUIRED
+#   None.
 # Arguments:
 #   $1   Number of leading positional parameters that must be set.
 #   $@   The caller's own "$@" (count included), forwarded so the check can
@@ -138,12 +138,12 @@ core::is_nameref_valid() {
 # Rejects a repeated single-value getopts flag. Call it from a
 # `case "$opt" in ...)` arm *before* assigning `OPTARG`, passing the target
 # variable's current (pre-assignment) value as <current_value> -- a
-# non-empty value there means the flag was already seen once. Logs
-# "-<opt> <current_value> <ERROR_OPTION_ARG_DUP>" and returns 1 if so;
-# no-ops otherwise.
+# non-empty value there means the flag was already seen once. If so, logs
+# "-<opt> <current_value> <__BASHKIT_CORE_ERROR_OPTION_ARG_DUP>" and returns
+# 1; otherwise it does nothing.
 #
 # Globals:
-#   ERROR_OPTION_ARG_DUP
+#   __BASHKIT_CORE_ERROR_OPTION_ARG_DUP
 # Arguments:
 #   $1   The option letter/flag being parsed.
 #   $2   The target variable's current value, prior to this OPTARG
@@ -160,7 +160,7 @@ core::is_option_arg_dup() {
   local -r opt_arg="$2"
 
   if [[ -n "${opt_arg}" ]]; then
-    log_error "-${opt} ${opt_arg} ${ERROR_OPTION_ARG_DUP}"
+    log_error "-${opt} ${opt_arg} ${__BASHKIT_CORE_ERROR_OPTION_ARG_DUP}"
     core::print_stack_trace
     return 1
   fi
@@ -180,7 +180,7 @@ core::is_option_arg_dup() {
 #          call more than once against the same <state_var>.
 #
 # Globals:
-#   ERROR_OPTION_UNKNOWN
+#   __BASHKIT_CORE_ERROR_OPTION_UNKNOWN
 # Arguments:
 #   $1   Mode: "save" or "restore".
 #   $2   Name of the caller's state variable (passed by reference).
@@ -213,7 +213,7 @@ core::with_xtrace_suppressed() {
       fi
       ;;
     *)
-      core::fail "${ERROR_OPTION_UNKNOWN}: ${mode}" || return
+      core::fail "${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}: ${mode}" || return
       ;;
   esac
 }

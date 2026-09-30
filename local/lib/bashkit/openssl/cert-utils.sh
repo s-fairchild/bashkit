@@ -125,11 +125,12 @@ openssl::self_signed_cert_gen() {
       h) openssl::usage_self_signed_cert_gen; return 0; ;;
       :)
         openssl::usage_self_signed_cert_gen
-        core::fail "-${OPTARG} ${ERROR_OPTION_ARG_REQUIRED}" || return
+        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED}" \
+          || return
         ;;
       ?)
         openssl::usage_self_signed_cert_gen
-        core::fail "-${OPTARG} ${ERROR_OPTION_UNKNOWN}" || return
+        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}" || return
         ;;
     esac
   done
