@@ -11,7 +11,10 @@ logging API from [`bash-logger`](https://github.com/s-fairchild/bash-logger)'s
 
 - `init_logger`
 - `log_debug`, `log_info`, `log_warn`, `log_error`, `log_fatal`, `log_sensitive`
-- the `ERROR_*` and `BOOLEAN_*` constants
+
+bash-logger doesn't define any `ERROR_*` or `BOOLEAN_*` constants. bashkit's
+own are `__BASHKIT_CORE_ERROR_*` (`core/logger-utils.sh`) and
+`__BASHKIT_CORE_BOOLEAN_*` (`core/boolean-utils.sh`).
 
 Every file inside this repo sources its own siblings via
 `${BASH_SOURCE[0]%/*}/<relative-path>`, so `local/bin/*` wrappers and
@@ -21,8 +24,11 @@ caller's CWD. If `init_logger` isn't already defined, `core::logger_init`
 
 1. `vendor/bash-logger/` — bashkit's own submodule. Consumers need
    `git submodule update --init --recursive` to check it out.
-2. `~/.local/lib/bash-logger/`
-3. `/usr/local/lib/bash-logger/`
+2. `../bash-logger/` beside bashkit — a copy the consumer vendored next to
+   it (e.g. `hack/vendor/bash-logger/` next to `hack/vendor/bashkit/`)
+3. `~/.local/lib/bash-logger/`
+4. `/usr/local/lib/bash-logger/`
+5. `/usr/lib/bash-logger/`
 
 If a consumer loads and initializes `bash-logger` itself before sourcing
 bashkit, bashkit uses that setup as-is and ignores everything in
@@ -44,20 +50,39 @@ earlier directory overrides a later one:
 1. `BASHKIT_LOG_CONFIG_DIR`, if set
 2. bashkit's own [`.bashkit/`](.bashkit/): the `dev`, `test`, `ci`, `staging`,
    and `prod` configs shipped in this repo
-3. `${XDG_CONFIG_HOME:-~/.config}/bashkit` (user; `make install` copies
+3. `../../etc/bashkit` relative to bashkit (e.g. `hack/etc/bashkit/` for a
+   copy vendored at `hack/vendor/bashkit/`)
+4. `${XDG_CONFIG_HOME:-~/.config}/bashkit` (user; `make install` copies
    `.bashkit/` here)
-4. `/usr/local/etc/bashkit` (local system)
-5. `/etc/bashkit` (system)
+5. `/usr/local/etc/bashkit` (local system)
+6. `/etc/bashkit` (system)
 
 A checkout or vendored copy of bashkit always finds its own `.bashkit/`
-first, so for the shipped environment names the user and system directories
-only matter to installed copies (`make install`), which have no `.bashkit/`
+first, so for the shipped environment names every later directory only
+matters to installed copies (`make install`), which have no `.bashkit/`
 beside them. To override a shipped config from a consumer repo, use
-`BASHKIT_LOG_CONFIG_DIR`.
+`BASHKIT_LOG_CONFIG_DIR`; `../../etc/bashkit` only supplies environment
+names bashkit doesn't ship.
 
 Setting `BASHKIT_ENV` to a name that has no `logging-<name>.conf` in any of
 these directories is an error. Every log level always goes to stderr, whatever
 the config says, so log lines never end up in a caller's `$(...)` capture.
+
+### Verbosity and level
+
+These map onto `init_logger` options and override the config file:
+
+| Variable | Takes | Effect |
+| --- | --- | --- |
+| `BASHKIT_VERBOSE` | a boolean | true passes `--verbose` (log at DEBUG) |
+| `BASHKIT_QUIET` | a boolean | true passes `--quiet` (no console output) |
+| `BASHKIT_LEVEL` | a level name or number, e.g. `DEBUG`, `WARN`, `4` | passes `--level`; bash-logger uses `INFO` for a value it doesn't recognize |
+
+A boolean is `true`/`false`, `yes`/`no`, or `on`/`off` in any case, or `1`/`0`
+(see `core::bool_is_valid`). Unset or empty means false. Any other value is an
+error, and `core::logger_init` fails before loading the logger.
+`BASHKIT_LEVEL` wins over the DEBUG level `BASHKIT_VERBOSE` sets, and an
+option passed to `core::logger_init` itself wins over all of them.
 
 ### Setting `BASHKIT_ENV`
 
@@ -115,11 +140,11 @@ local/
     core/
       core.sh                   # umbrella loader for this directory
       bin-utils.sh               # sources local/bin/{bw,coreos-installer,yq} for library-style use
-      boolean-utils.sh           # core::is_boolean, __BASHKIT_CORE_BOOLEAN_* constants
+      boolean-utils.sh           # core::bool_is_{valid,true}, __BASHKIT_CORE_BOOLEAN_* constants
       contract-utils.sh          # core::fail, core::require_{operands,pipestatus,nameref},
                                   # core::is_option_arg_dup, core::with_xtrace_suppressed
-      logger-utils.sh            # core::logger_{source,config_path,init,resolve},
-                                  # core::print_stack_trace
+      logger-utils.sh            # core::logger_{init,resolve}, core::print_stack_trace,
+                                  # __BASHKIT_CORE_ERROR_* constants
       file-utils.sh               # core::file_read_builtin, core::file_read_preserve_newlines,
                                   # core::file_parse_extension
       sha512sum-utils.sh          # core::sha512sum wrapper + core::checksum_parse_hash
@@ -206,7 +231,7 @@ In short:
 
 ## Linting
 
-There is no test harness (no bats, no pre-commit). Lint with:
+There is no test harness (no bats). Lint with:
 
 ```bash
 make lint
@@ -214,7 +239,9 @@ make lint
 
 This runs `shellcheck` over every shell file using the checked-in
 `.shellcheckrc`, which enables optional checks for parts of
-`docs/STYLEGUIDE.md`. See `.claude/skills/linting-code/SKILL.md` for details,
+`docs/STYLEGUIDE.md`. [lefthook](https://lefthook.dev/) runs the same check
+on staged files before each commit once you run `lefthook install`. See
+`.claude/skills/linting-code/SKILL.md` for details,
 including linting from within a consuming repo and the `SC1091` findings to
 expect standalone. Validate runtime behavior by sourcing the affected file
 directly once `vendor/bash-logger` is checked out

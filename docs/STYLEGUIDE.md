@@ -138,13 +138,14 @@ every consumer at the same time.
   - Every in-repo path starts with `${BASH_SOURCE[0]%/*}/` (see above), so
     in practice nearly every sourcing line needs the directive.
   - A fully static path doesn't need one, but those should be rare here.
+- If two files source each other, point the directive on one side at
+  `/dev/null` (with a comment saying why), so ShellCheck doesn't follow the
+  cycle; following one can take 20s or more per file. The only cycle today is
+  `core/boolean-utils.sh` -> `core/logger-utils.sh`.
 - The logging library (`bash-logger`) lives outside this repo.
   - A file that uses any `core::*` contract helper (`core::fail`,
     `core::require_*`, …) sources `core/contract-utils.sh` and does **not**
     load `bash-logger` itself. `contract-utils.sh` loads the logger.
-  - Only a file with no `core::` dependency loads the logger itself. It does
-    so through `core/logger-utils.sh`, never by sourcing `logging.sh` by
-    path:
   - Only a file with no `core::` dependency loads the logger itself. It does
     so through `core/logger-utils.sh`, never by sourcing `logging.sh` by
     path:
@@ -160,10 +161,14 @@ every consumer at the same time.
 
   - `core::logger_init` does nothing if `init_logger` is already defined.
     Otherwise it sources the first `logging.sh` it finds in
-    `vendor/bash-logger/`, `~/.local/lib/bash-logger/`, then
-    `/usr/local/lib/bash-logger/`.
+    `vendor/bash-logger/`, a `bash-logger/` beside bashkit,
+    `~/.local/lib/bash-logger/`, `/usr/local/lib/bash-logger/`, then
+    `/usr/lib/bash-logger/`.
   - It passes `init_logger` the config file the environment selects
-    (`BASHKIT_LOG_CONFIG`, `BASHKIT_ENV`; see `core::logger_config_path`).
+    (`BASHKIT_LOG_CONFIG`, `BASHKIT_ENV`; see `core::_logger_config_path`).
+  - It passes `--verbose`, `--quiet`, and `--level` from `BASHKIT_VERBOSE`,
+    `BASHKIT_QUIET`, and `BASHKIT_LEVEL`, and fails before loading anything
+    if either boolean isn't one (§8).
   - It passes `--log "${BASHKIT_LOG_FILE}"` when that variable is set.
     Shipped `.bashkit/` configs don't set `log_file`: bash-logger requires
     an absolute path there, and consumers would inherit it.
@@ -190,6 +195,10 @@ After the `::` comes lowercase `snake_case`, ordered as noun then verb
 - **Predicates**, which answer through their exit status, are named
   `<ns>::<noun>_is_<state>` or `<ns>::<noun>_exists`.
 - **Usage printers** are named `<ns>::usage_<function-suffix>`.
+- **Private helpers**, called only from their own file, put an underscore
+  after the `::` (`core::_logger_source`, `core::_echo_stderr`). Consumers
+  must not call them, so they can change without notice. They still get a
+  full function comment (§4.1).
 - **Exception:** a wrapper executable's functions may reuse the wrapped
   binary's name, hyphens included.
   - For example, `core::coreos-installer` and `core::usage_coreos-installer`.
@@ -205,8 +214,12 @@ their consumers:
   - For example, `__BASHKIT_VIRSH_NETWORK_KEY_ACTIVE`.
 - Declare them with `readonly`, or `declare -r` inside a function.
 - Don't define new unprefixed globals.
-  - The `ERROR_*`, `LOG_LEVEL_*`, and `BOOLEAN_*` names come from the
-    external logging library, and bashkit only reads them.
+  - The `LOG_LEVEL_*` names come from the external logging library, and
+    bashkit only reads them.
+  - bash-logger does **not** define `ERROR_*` or `BOOLEAN_*`. Use bashkit's
+    own `__BASHKIT_CORE_ERROR_*` (`core/logger-utils.sh`) and
+    `__BASHKIT_CORE_BOOLEAN_*` (`core/boolean-utils.sh`) constants; an
+    unprefixed `${ERROR_...}` expands to nothing (or fails under `set -u`).
 - User-facing tunables are unprefixed environment variables that are read
   only.
   - For example, `XTRACE` and `PODMAN_LOG_LEVEL`.
@@ -240,7 +253,7 @@ bashkit:
 # non-empty value there means the flag was already seen once.
 #
 # Globals:
-#   ERROR_OPTION_ARG_DUP
+#   __BASHKIT_CORE_ERROR_OPTION_ARG_DUP
 # Arguments:
 #   $1   The option letter/flag being parsed.
 #   $2   The target variable's current value, prior to this OPTARG
@@ -324,8 +337,8 @@ while getopts ':l:h' opt; do
   case "${opt}" in
     h) <ns>::usage_<fn>; return 0 ;;
     l) labels+=("${OPTARG}") ;;
-    :) <ns>::usage_<fn>; log_error "-${OPTARG} ${ERROR_OPTION_ARG_REQUIRED}"; return 1 ;;
-    ?) <ns>::usage_<fn>; log_error "-${OPTARG} ${ERROR_OPTION_UNKNOWN}"; return 1 ;;
+    :) <ns>::usage_<fn>; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED}"; return 1 ;;
+    ?) <ns>::usage_<fn>; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; return 1 ;;
   esac
 done
 shift $((OPTIND - 1))
@@ -357,10 +370,13 @@ that can't be recovered from. For bad input or a failed command, call
   - Write `core::fail "..." || return`, not `core::fail "..."; return`.
 - Use it instead of a `log_error` + `return 1` pair.
   - Exception: code that must work before the logger is loaded (the
-    functions in `core/logger-utils.sh`) uses `echo ... >&2`,
-    `core::print_stack_trace`, and `return 1` instead.
+    functions in `core/logger-utils.sh` and `core/boolean-utils.sh`) uses
+    `echo ... >&2` or `core::logger_resolve`, then
+    `core::print_stack_trace`, and returns its own status instead.
     - `core::print_stack_trace` lives in `logger-utils.sh` for this reason.
-      That file must not source anything, including `contract-utils.sh`.
+      That file sources only `boolean-utils.sh`, and `boolean-utils.sh`
+      sources only `logger-utils.sh`. Neither may source anything else,
+      including `contract-utils.sh`.
   - Exception: getopts error arms (§4.4), which print usage and don't need a
     stack trace.
 
@@ -471,7 +487,7 @@ Google says to send errors to stderr. bashkit goes further and sends
 
 - Don't use bare `echo ... >&2` for diagnostics.
   - Exception: code that runs before the logger can be loaded (the
-    functions in `core/logger-utils.sh`).
+    functions in `core/logger-utils.sh` and `core/boolean-utils.sh`).
   - Exception: `local/bin/*` fallbacks for when the logger isn't loaded.
 - Log a variable's state with `log_debug "$(declare -p var)"`.
 - Log anything that may contain secret material with `log_sensitive`, never
@@ -534,6 +550,16 @@ Google doesn't cover ShellCheck directives. In bashkit:
 - Use `printf '%s' ...` instead of `echo` to write data.
   - `echo` is only for messages.
 - Check whether a command exists with `command -v`, not `which`.
+- Test a boolean-valued setting with `core::bool_is_true`, not by comparing
+  it to one spelling. It accepts `true`/`false`, `yes`/`no`, `on`/`off` (any
+  case) and `1`/`0`, and returns 5 with an error for anything else. When an
+  invalid value must be a failure rather than false, check it first with
+  `core::bool_is_valid`. Never test one with `(( ))` or `-eq`: arithmetic
+  evaluation treats a word as a variable name (so `true` is 0) and runs any
+  `$(...)` inside an array subscript.
+  - The §1.4 xtrace hook (`-eq 1`) is the one existing exception: it can't
+    call anything, and `XTRACE` is documented as `1`. `XTRACE=true` does
+    nothing.
 - Use `local -n` namerefs to pass arrays by name.
   - Document the parameter as a nameref in the function comment.
   - Validate the name with `core::require_nameref <name> [a|A|-]` before
@@ -654,5 +680,5 @@ another reason. Don't copy their patterns.
 | `virsh/virsh-network.sh` (`virsh::net_define`) | Writes the network XML to a `mktemp` file with no stated reason. `virsh net-define <(printf ...)` may work instead; test it before changing | §4.7 |
 | `core/sha512sum-utils.sh` | Function comments list arguments as `*) input - ...` instead of `$@` | §4.1 |
 | `core/contract-utils.sh` (`core::fail`, `core::require_nameref`, `core::is_valid_var_name`) | Missing or partial function comments; no entry logging | §4.1, §4.2 |
-| `kube/kubectl.sh` | `#######` banner comments; `kube::kubectl_wait` has no comment; `log_error` + `return 1` and `core::fail ...; return` instead of `core::fail ... \|\| return` | §4.1, §4.5 |
+| `kube/kubectl.sh` | `#######` banner comments; `log_error` + `return 1` and `core::fail ...; return` instead of `core::fail ... \|\| return` | §4.1, §4.5 |
 | `kube/kustomize.sh` | No function comments; unquoted `${cmd[@]}` behind `disable=SC2068` with no reason | §4.1, §7.1 |

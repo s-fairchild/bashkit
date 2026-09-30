@@ -351,6 +351,10 @@ core::logger_init() {
 
   # No entry log: the logger isn't loaded until core::_logger_source runs.
 
+  unset LOG_FILE USE_COLORS LOG_FORMAT \
+    CURRENT_LOG_LEVEL LOG_STDERR_LEVEL \
+    SCRIPT_NAME USE_JOURNAL
+
   local -r verbose="${BASHKIT_VERBOSE:-${__BASHKIT_CORE_BOOLEAN_FALSE}}"
   local -r quiet="${BASHKIT_QUIET:-${__BASHKIT_CORE_BOOLEAN_FALSE}}"
   local -r level="${BASHKIT_LEVEL:-}"
