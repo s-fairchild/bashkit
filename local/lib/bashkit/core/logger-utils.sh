@@ -10,17 +10,37 @@
 # via `echo` rather than the logging API. This file has no dependencies;
 # keep it that way, since contract-utils.sh sources it.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED="true"
+
+readonly __BASHKIT_CORE_ERROR_FILE_NOT_FOUND="file not found"
+readonly __BASHKIT_CORE_ERROR_DIR_NOT_FOUND="directory not found"
+readonly __BASHKIT_CORE_ERROR_FAILED_TO_CREATE_DIR="failed to create directory"
+readonly __BASHKIT_CORE_ERROR_FAILED_TO_CREATE_FILE="failed to create file"
+readonly __BASHKIT_CORE_ERROR_FILE_SOURCE_FAILED="failed to source file"
+readonly __BASHKIT_CORE_ERROR_OPTION_REQUIRED="option must be provided"
+readonly __BASHKIT_CORE_ERROR_OPTION_UNKNOWN="option is unknown"
+readonly __BASHKIT_CORE_ERROR_OPTION_ARG_DUP="[option_argument] can only be specified once"
+readonly __BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED="[option argument] is required"
+readonly __BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING="value must be provided"
+readonly __BASHKIT_CORE_ERROR_VAR_UNSET="variable is unset"
+readonly __BASHKIT_CORE_WARN_VAR_UNSET="${__BASHKIT_CORE_ERROR_VAR_UNSET}"
+readonly __BASHKIT_CORE_ERROR_ARRAY_NO_INDEX="array has no indexes set"
+readonly __BASHKIT_CORE_ERROR_OPERAND_REQUIRED="operand is required"
+readonly __BASHKIT_CORE_ERROR_STRING_EMPTY="string cannot be empty"
+readonly __BASHKIT_CORE_ERROR_STDIN_NULL="stdin cannot be null"
+readonly __BASHKIT_CORE_ERROR_REGEX_FAIL="failed regex match"
 
 # Where core::logger_source looks for logging.sh, highest priority first.
 # The vendored path is bashkit's own submodule, relative to this file:
 # <bashkit>/local/lib/bashkit/core/ -> <bashkit>/vendor/bash-logger/.
 readonly -a __BASHKIT_CORE_LOGGER_PATHS=(
+  # bashkit repo root
   "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
+  # forge repo root
+  "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
   "${HOME:-}/.local/lib/bash-logger/logging.sh"
   "/usr/local/lib/bash-logger/logging.sh"
+  "/usr/lib/bash-logger/logging.sh"
 )
 
 # Where core::logger_config_path looks for config files, highest priority
@@ -29,7 +49,10 @@ readonly -a __BASHKIT_CORE_LOGGER_PATHS=(
 # checkout or vendored copy uses its own configs. Installed copies have no
 # .bashkit/ there and fall through to the user and system directories.
 readonly -a __BASHKIT_CORE_LOGGER_CONFIG_DIRS=(
+  # bashkit repo root .bashkit
   "${BASH_SOURCE[0]%/*}/../../../../.bashkit"
+  # forge hack/etc/bashkit
+  "${BASH_SOURCE[0]%/*}/../../../../../../etc/bashkit"
   "${XDG_CONFIG_HOME:-${HOME:-}/.config}/bashkit"
   "/usr/local/etc/bashkit"
   "/etc/bashkit"
@@ -66,10 +89,11 @@ core::logger_resolve() {
 
   local logger_out
   if declare -f "log_${level}" >/dev/null 2>&1; then
-    readonly logger_out="log_${level}"
+    logger_out="log_${level}"
   else
-    readonly logger_out="core::_echo_stderr"
+    logger_out="core::_echo_stderr"
   fi
+  readonly logger_out
 
   printf "%s" "${logger_out}"
 }
@@ -129,7 +153,7 @@ core::print_stack_trace() {
 # Returns:
 #   0 if the logger is loaded or was sourced; 1 if no copy was found;
 #   otherwise the status of sourcing logging.sh.
-core::logger_source() {
+core::_logger_source() {
   declare -f log_debug >/dev/null 2>&1 && log_debug "Starting ${FUNCNAME[0]}()"
 
   declare -f init_logger >/dev/null 2>&1 && return 0
@@ -197,7 +221,7 @@ core::logger_source() {
 # Returns:
 #   1 if BASHKIT_LOG_CONFIG or BASHKIT_ENV names a config that can't be
 #   used; 0 otherwise.
-core::logger_config_path() {
+core::_logger_config_path() {
   if declare -f log_debug >/dev/null 2>&1; then
     log_debug "Starting ${FUNCNAME[0]}()" 1>&2
   fi
@@ -283,23 +307,43 @@ core::logger_config_path() {
 core::logger_init() {
   declare -f init_logger >/dev/null 2>&1 && return 0
 
-  # No entry log: the logger isn't initialized until the end.
-  core::logger_source || return
+  # These values must be captured before sourcing bash-logger/logging.sh
+  # otherwise they will be overwritten and lost.
+  local -r verbose_env="${BASHKIT_VERBOSE:-${__BASHKIT_CORE_BOOLEAN_FALSE}}"
+  local -r quiet_env="${BASHKIT_QUIET:-${__BASHKIT_CORE_BOOLEAN_FALSE}}"
+  local -r level_env="${BASHKIT_LEVEL:-}"
+  core::_logger_source || return
 
   local config
-  config="$(core::logger_config_path)" || return
+  config="$(core::_logger_config_path)" || {
+    core::print_stack_trace
+    return 1
+  }
   readonly config
 
   local -a options=()
-  if [[ -n "${config}" ]]; then
-    options+=("--config" "${config}")
-  fi
-  if [[ -n "${BASHKIT_LOG_FILE:-}" ]]; then
-    options+=("--log" "${BASHKIT_LOG_FILE}")
-  fi
-  options+=("--stderr-level" "DEBUG" "$@")
-  readonly options
+
+  # --verbose and --quiet must be passed in this order
+  core::bool_is_true "${verbose_env}" && options+=("--verbose")
+  core::bool_is_true "${quiet_env}" && options+=("--quiet")
+  # bash-logger assigns --level info if the level is invalid.
+  # No need to validate it here.
+  [[ -n "${level_env}" ]] && options+=("--level" "${level_env}")
+  [[ -n "${config}" ]] && options+=("--config" "${config}")
+  [[ -n "${BASHKIT_LOG_FILE:-}" ]] && options+=("--log" "${BASHKIT_LOG_FILE}")
+  readonly options+=(
+    "--name"
+    "$(basename "${BASH_SOURCE[1]}")"
+    "--stderr-level"
+    "DEBUG"
+    "$@"
+  )
 
   init_logger "${options[@]}" || return
   log_debug "${FUNCNAME[0]}(): init_logger ${options[*]}" 1>&2
 }
+
+if [[ "${__BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED:-}" != "true" ]]; then
+  # shellcheck source=boolean-utils.sh
+  . "${BASH_SOURCE[0]%/*}/boolean-utils.sh"
+fi

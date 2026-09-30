@@ -14,7 +14,6 @@ kube::kubectl_wait() {
   local msg="Waiting for ${resource}"
   [[ -n "${namespace}" ]] && msg+=" in namespace ${namespace} "
   msg+=" to become Available (timeout ${timeout})."
-  readonly msg
   log_info "${msg}"
 
   if ! kubectl wait "${resource}" \
@@ -24,7 +23,6 @@ kube::kubectl_wait() {
 
     local msg="${FUNCNAME[0]}()"
     msg+="${resource} did not become Available within ${timeout}"
-    readonly msg
     core::fail "${msg}" || return
   fi
 }

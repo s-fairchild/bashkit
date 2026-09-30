@@ -13,6 +13,8 @@ readonly __BASHKIT_CORE_BOOLEAN_ON="on"
 readonly __BASHKIT_CORE_BOOLEAN_OFF="off"
 readonly __BASHKIT_CORE_BOOLEAN_YES="yes"
 readonly __BASHKIT_CORE_BOOLEAN_NO="no"
+declare -ir __BASHKIT_CORE_BOOLEAN_TRUE_INT=1
+declare -ir __BASHKIT_CORE_BOOLEAN_FALSE_INT=0
 
 # core::is_boolean(value)
 #
@@ -27,24 +29,60 @@ readonly __BASHKIT_CORE_BOOLEAN_NO="no"
 #   An error and stack trace if the value doesn't match a recognized spelling.
 # Returns:
 #   1 if the value is not a recognized boolean spelling; 0 otherwise.
-core::is_boolean() {
-  core::require_operands 1 "$@" || return
-  local bool="$1"
-  readonly bool="${bool,,}"
+core::_bool_is_string() {
+  local -r bool="${1:-}"
 
-  local boolean_values="${__BASHKIT_CORE_BOOLEAN_TRUE}|${__BASHKIT_CORE_BOOLEAN_FALSE}"
-  boolean_values+="|${__BASHKIT_CORE_BOOLEAN_ON}|${__BASHKIT_CORE_BOOLEAN_OFF}"
-  boolean_values+="|${__BASHKIT_CORE_BOOLEAN_YES}|${__BASHKIT_CORE_BOOLEAN_NO}"
+  [[ -n "${bool}" ]] || {
+    echo "${FUNCNAME[0]}(): bool=\$1 cannot be empty." >&2
+    declare -f core::print_stack_trace >/dev/null 2>&1 \
+      && core::print_stack_trace
+    return 5
+  }
+
+  local boolean_values="${__BASHKIT_CORE_BOOLEAN_TRUE}"
+  boolean_values+="|${__BASHKIT_CORE_BOOLEAN_FALSE}"
+  boolean_values+="|${__BASHKIT_CORE_BOOLEAN_ON}"
+  boolean_values+="|${__BASHKIT_CORE_BOOLEAN_OFF}"
+  boolean_values+="|${__BASHKIT_CORE_BOOLEAN_YES}"
+  boolean_values+="|${__BASHKIT_CORE_BOOLEAN_NO}"
   readonly boolean_values
+  declare -f log_debug >/dev/null 2>&1 \
+    && log_debug "$(declare -p boolean_values)"
 
-  if ! [[ "${bool}" =~ ^(${boolean_values})$ ]]; then
-    log_error "${1} must match regex: ${boolean_values}"
-    core::print_stack_trace
-    return 1
-  fi
+  [[ "${bool}" =~ ^(${boolean_values})$ ]]
 }
 
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/contract-utils.sh"
-fi
+core::_bool_is_int() {
+  local -r bool="${1}"
+
+  (( bool == __BASHKIT_CORE_BOOLEAN_TRUE_INT )) || \
+  (( bool == __BASHKIT_CORE_BOOLEAN_FALSE_INT ))
+}
+
+# TODO setup trap for exit code 5 to fail
+# Reasoning: core::bool_is_true returns 0 if the boolean is valid and true
+# returns 1 if boolean is valid and false
+# returns 5 if boolean is invalid, any other error
+# exit code 5 must be trapped and acted on to catch errors.
+core::bool_is_true() {
+  local bool="${1}"
+  readonly bool
+
+  local regex_bool_true="${__BASHKIT_CORE_BOOLEAN_TRUE}"
+  regex_bool_true+="|${__BASHKIT_CORE_BOOLEAN_YES}"
+  regex_bool_true+="|${__BASHKIT_CORE_BOOLEAN_ON}"
+  readonly regex_bool_true
+
+  local regex_bool_false="${__BASHKIT_CORE_BOOLEAN_FALSE}"
+  regex_bool_false+="|${__BASHKIT_CORE_BOOLEAN_NO}"
+  regex_bool_false+="|${__BASHKIT_CORE_BOOLEAN_OFF}"
+  readonly regex_bool_false
+
+  # if core::_bool_is_int "${bool}"; then
+    # return "${bool}"
+  if core::_bool_is_string "${bool}"; then
+    [[ "${bool}" =~ ^(${regex_bool_true})$ ]] || return 1
+  else
+    return 5
+  fi
+}
