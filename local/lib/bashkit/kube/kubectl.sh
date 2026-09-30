@@ -4,26 +4,44 @@
 
 readonly __BASHKIT_LIB_KUBE_KUBECTL_SOURCED="true"
 
+# kube::kubectl_wait(resource [namespace] [timeout])
+#
+# Runs `kubectl wait --for=condition=Available` on <resource> and logs what
+# it is waiting for.
+#
+# Globals:
+#   None.
+# Arguments:
+#   $1   The resource, e.g. deployment/virt-operator.
+#   $2   Optional. The namespace. Defaults to kubectl's current namespace.
+#   $3   Optional. The timeout, in kubectl's duration format. Defaults to
+#        300s.
+# Outputs:
+#   An info line before waiting, whatever `kubectl wait` writes, and an error
+#   and stack trace if <resource> doesn't become Available in time.
+# Returns:
+#   1 if <resource> is missing or doesn't become Available in time; 0
+#   otherwise.
 kube::kubectl_wait() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+
   core::require_operands 1 "$@" || return
   local -r resource="${1}"
   local -r namespace="${2:-}"
   local -r timeout="${3:-300s}"
 
   local msg="Waiting for ${resource}"
-  [[ -n "${namespace}" ]] && msg+=" in namespace ${namespace} "
+  [[ -n "${namespace}" ]] && msg+=" in namespace ${namespace}"
   msg+=" to become Available (timeout ${timeout})."
+  readonly msg
   log_info "${msg}"
 
   if ! kubectl wait "${resource}" \
         -n "${namespace}" \
         --for=condition=Available \
         --timeout="${timeout}"; then
-
-    local msg="${FUNCNAME[0]}()"
-    msg+="${resource} did not become Available within ${timeout}"
-    core::fail "${msg}" || return
+    core::fail "${resource} did not become Available within ${timeout}." \
+      || return
   fi
 }
 
