@@ -3,8 +3,6 @@
 # Thin podman wrapper around docker.io/mikefarah/yq, so callers never need yq
 # installed on the host.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_BIN_YQ_SOURCED="true"
 
 # core::yq()
@@ -63,8 +61,12 @@ if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
   . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"
 fi
 
-core::logger_init --name "$(basename "$0"):core::yq()"
-
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  if core::bool_is_valid "${XTRACE:-}" \
+    && core::bool_is_true "${XTRACE}"; then
+    set -x
+  fi
+
+  core::logger_init --name "$(basename "${0}"):core::yq()"
   core::yq "$@"
 fi

@@ -3,8 +3,6 @@
 # Thin wrapper that runs the Bitwarden CLI (`bw`) inside the Bitwarden
 # desktop flatpak.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_BIN_BW_SOURCED="true"
 
 # bw(args...)
@@ -40,8 +38,12 @@ if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
   . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"
 fi
 
-core::logger_init --name "$(basename "$0"):core::bw()"
-
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  if core::bool_is_valid "${XTRACE:-}" \
+    && core::bool_is_true "${XTRACE}"; then
+    set -x
+  fi
+
+  core::logger_init --name "$(basename "$0"):core::bw()"
   core::bw "$@"
 fi

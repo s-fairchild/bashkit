@@ -14,7 +14,7 @@ if [[ "${__BASHKIT_BIN_COREOS_INSTALLER_SOURCED:-}" != "true" ]]; then
   . "${BASH_SOURCE[0]%/*}/../../../bin/coreos-installer"
 fi
 
-if [[ "${__bashkit_bin_envsubst_sourced:-}" != "true" ]]; then
+if [[ "${__BASHKIT_BIN_ENVSUBST_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../../../bin/envsubst
   . "${BASH_SOURCE[0]%/*}/../../../bin/envsubst"
 fi

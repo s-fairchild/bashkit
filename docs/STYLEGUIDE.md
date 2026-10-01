@@ -81,7 +81,9 @@ paths come from before the code was moved here, and they go stale.
 Every file uses this order:
 
 1. First line (§1.2) and header comment (§1.3).
-2. The xtrace hook: `[[ "${XTRACE:-0}" -eq 1 ]] && set -x`
+2. Libraries only: the xtrace hook, `[[ "${XTRACE:-0}" -eq 1 ]] && set -x`.
+   `local/bin/*` wrappers check `XTRACE` inside the entry-point guard
+   instead (§6.1).
 3. The double-inclusion guard (§2.1).
 4. Module constants (§3.2). An optional `### Globals Start ###` /
    `### Globals End ###` banner can wrap them.
@@ -517,12 +519,27 @@ function and ends with this guard:
 
 ```bash
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  if core::bool_is_valid "${XTRACE:-}" \
+    && core::bool_is_true "${XTRACE}"; then
+    set -x
+  fi
+
+  core::logger_init --name "$(basename "${0}"):core::yq()"
   core::yq "$@"
 fi
 ```
 
 Sourcing a wrapper must never have side effects beyond defining functions
-and constants.
+and constants. That's why the xtrace check and `core::logger_init` go inside
+the guard:
+
+- The first `core::logger_init` call configures the logger and every later
+  call does nothing, so a wrapper that initialized it at source time would
+  name the logger after itself and override the calling script's settings.
+- A sourced wrapper doesn't turn on xtrace for the whole calling script.
+
+An entry script that sources wrappers calls `core::logger_init` itself
+before sourcing them.
 
 ---
 
@@ -557,9 +574,12 @@ Google doesn't cover ShellCheck directives. In bashkit:
   `core::bool_is_valid`. Never test one with `(( ))` or `-eq`: arithmetic
   evaluation treats a word as a variable name (so `true` is 0) and runs any
   `$(...)` inside an array subscript.
-  - The §1.4 xtrace hook (`-eq 1`) is the one existing exception: it can't
-    call anything, and `XTRACE` is documented as `1`. `XTRACE=true` does
-    nothing.
+  - The §1.4 library xtrace hook (`-eq 1`) is the one existing exception:
+    it runs before anything is sourced, so it can't call anything, and
+    `XTRACE` is documented as `1`. `XTRACE=true` does nothing there.
+    `local/bin/*` wrappers run their check after sourcing (§6.1), so they
+    use `core::bool_is_valid` and `core::bool_is_true`. An invalid value is
+    ignored rather than an error.
 - Use `local -n` namerefs to pass arrays by name.
   - Document the parameter as a nameref in the function comment.
   - Validate the name with `core::require_nameref <name> [a|A|-]` before
@@ -668,7 +688,8 @@ another reason. Don't copy their patterns.
 | --- | --- | --- |
 | `podman/podman-{build,container,secret,volume}.sh` | Stale `# hack/lib/...` path header before the ShellCheck line | §1.2, §1.3 |
 | `ignition/{butane,ignition-validate,serve}.sh` | Header comment comes before `# shellcheck shell=bash` | §1.2 |
-| `local/bin/envsubst` | `# shellcheck shell=bash` instead of a shebang; lowercase guard `__bashkit_bin_envsubst_sourced` | §1.2, §2.1 |
+| `local/bin/envsubst` | `# shellcheck shell=bash` instead of a shebang | §1.2 |
+| `local/bin/{coreos-installer,envsubst}` | Source `contract-utils.sh`, which calls `core::logger_init` on load, so sourcing them still initializes the logger | §6.1 |
 | `podman/podman.sh` | Guard is `__LIB_PODMAN_SOURCED`, missing the `__BASHKIT_` prefix | §2.1 |
 | `core/bin-utils.sh`, `core/yq-utils.sh`, `k3s/token-utils.sh`, `kube/{kube,kubectl,kustomize}.sh` | No file header comment | §1.3 |
 | `core/yq-utils.sh` | No xtrace hook | §1.4 |

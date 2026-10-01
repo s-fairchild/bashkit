@@ -4,6 +4,8 @@
 # (docker.io/steve51516/envsubst:latest), forwarding options via getopts and
 # remaining arguments straight through to the containerized binary.
 
+readonly __BASHKIT_BIN_ENVSUBST_SOURCED="true"
+
 # core::usage_envsubst()
 #
 # Prints usage to stderr.
@@ -140,7 +142,6 @@ if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../lib/bashkit/core/logger-utils.sh
   . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"
 fi
-core::logger_init --name "$(basename "$0"):core::envsubst()"
 
 if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../lib/bashkit/core/contract-utils.sh
@@ -148,6 +149,11 @@ if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
 fi
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  readonly __bashkit_bin_envsubst_sourced="true"
+  if core::bool_is_valid "${XTRACE:-}" \
+    && core::bool_is_true "${XTRACE}"; then
+    set -x
+  fi
+
+  core::logger_init --name "$(basename "${0}"):core::envsubst()"
   core::envsubst "$@"
 fi
