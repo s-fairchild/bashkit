@@ -160,9 +160,8 @@ core::is_option_arg_dup() {
   local -r opt_arg="$2"
 
   if [[ -n "${opt_arg}" ]]; then
-    log_error "-${opt} ${opt_arg} ${__BASHKIT_CORE_ERROR_OPTION_ARG_DUP}"
-    core::print_stack_trace
-    return 1
+    core::fail "-${opt} ${opt_arg} ${__BASHKIT_CORE_ERROR_OPTION_ARG_DUP}" \
+      || return
   fi
 }
 
