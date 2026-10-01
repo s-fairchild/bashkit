@@ -29,20 +29,22 @@ kube::kubectl_wait() {
   local -r resource="${1}"
   local -r namespace="${2:-}"
   local -r timeout="${3:-300s}"
+  local -r condition="${4:-Available}"
 
   local msg="Waiting for ${resource}"
   [[ -n "${namespace}" ]] && msg+=" in namespace ${namespace}"
-  msg+=" to become Available (timeout ${timeout})."
+  msg+=" to become ${condition} (timeout ${timeout})."
   readonly msg
   log_info "${msg}"
 
-  if ! kubectl wait "${resource}" \
-        -n "${namespace}" \
-        --for=condition=Available \
-        --timeout="${timeout}"; then
-    core::fail "${resource} did not become Available within ${timeout}." \
-      || return
-  fi
+  # TODO wrap kubectl wait output message in log_info/log_error.
+  kubectl wait "${resource}" \
+    -n "${namespace}" \
+    --for=condition="${condition}" \
+    --timeout="${timeout}" || {
+        core::fail "${resource} did not become ${condition} within ${timeout}." \
+          || return
+    }
 }
 
 #######################################
