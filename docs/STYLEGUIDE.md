@@ -173,7 +173,9 @@ every consumer at the same time.
   - It passes `--verbose`, `--quiet`, and `--level` from `BASHKIT_VERBOSE`,
     `BASHKIT_QUIET`, and `BASHKIT_LEVEL`, and fails before loading anything
     if either boolean isn't one (§8).
-  - It passes `--log "${BASHKIT_LOG_FILE}"` when that variable is set.
+  - It passes `--log` with `BASHKIT_LOG_FILE` when that variable is set,
+    and otherwise with `${BASHKIT_ENV}.log` in `BASHKIT_LOG_DIR` when that
+    one is (see `core::_logger_log_file_path`).
     Shipped `.bashkit/` configs don't set `log_file`: bash-logger requires
     an absolute path there, and consumers would inherit it.
   - It always routes every level to stderr (`--stderr-level DEBUG`), so log

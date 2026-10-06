@@ -230,6 +230,33 @@ core::_logger_source() {
   return 1
 }
 
+# core::_logger_env_is_valid(name)
+#
+# Private. Tests whether <name> can be used as an environment name
+# (BASHKIT_ENV). The name becomes part of a file name (logging-<name>.conf,
+# <name>.log), so `/` and `..` are rejected: it must not be able to point
+# outside the directory that file belongs in.
+#
+# Globals:
+#   None.
+# Arguments:
+#   $1   The environment name.
+# Outputs:
+#   None.
+# Returns:
+#   0 if <name> is letters, digits, `.`, `_`, and `-` only, doesn't start
+#   with `.` or `-`, and holds no `..`; 1 otherwise.
+core::_logger_env_is_valid() {
+  if declare -f log_debug >/dev/null 2>&1; then
+    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))" 1>&2
+  fi
+
+  local -r name="${1:-}"
+  local -r regex='^[A-Za-z0-9_][A-Za-z0-9._-]*$'
+
+  [[ "${name}" =~ ${regex} && "${name}" != *..* ]]
+}
+
 # core::_logger_config_path()
 #
 # Private; core::logger_init calls it. Chooses a bash-logger config file
@@ -299,9 +326,8 @@ core::_logger_config_path() {
   local -r _env="${BASHKIT_ENV:-}"
   local conf="logging.conf"
   if [[ -n "${_env}" ]]; then
-    # Reject `/` and `..` so BASHKIT_ENV can't point outside the config dirs.
-    local -r _env_regex='^[A-Za-z0-9_][A-Za-z0-9._-]*$'
-    if [[ ! "${_env}" =~ ${_env_regex} || "${_env}" == *..* ]]; then
+    # So that BASHKIT_ENV can't point outside the config dirs.
+    if ! core::_logger_env_is_valid "${_env}"; then
       core::print_stack_trace \
         "${FUNCNAME[0]}(): BASHKIT_ENV is not a valid environment name:" \
         "${_env}"
@@ -326,6 +352,62 @@ core::_logger_config_path() {
   fi
 }
 
+# core::_logger_log_file_path()
+#
+# Private; core::logger_init calls it. Chooses the file that log lines are
+# also written to (`init_logger --log`) from the environment and prints its
+# path. The first match wins:
+#
+#   1. BASHKIT_LOG_FILE is set: that file.
+#   2. BASHKIT_LOG_DIR is set: ${BASHKIT_ENV}.log in that directory, or
+#      bashkit.log when BASHKIT_ENV isn't set.
+#
+# The file name is put together here, each time a script starts, and not
+# where BASHKIT_LOG_DIR is exported. An .envrc is evaluated once, when
+# direnv loads it, so a file name built there would still be the old one
+# under `BASHKIT_ENV=test ./script`.
+#
+# Prints nothing and succeeds when neither variable is set, so that nothing
+# is logged to a file.
+#
+# Globals:
+#   BASHKIT_LOG_FILE   Optional. Explicit path to the log file.
+#   BASHKIT_LOG_DIR    Optional. The directory of the per-environment log
+#                      files.
+#   BASHKIT_ENV        Optional. Environment name; see
+#                      core::_logger_env_is_valid.
+# Arguments:
+#   None.
+# Outputs:
+#   The log file's path on stdout, if one applies. An error and stack trace
+#   to stderr if BASHKIT_ENV can't be used in a file name.
+# Returns:
+#   1 if BASHKIT_LOG_DIR is used and BASHKIT_ENV isn't a valid environment
+#   name; 0 otherwise.
+core::_logger_log_file_path() {
+  if declare -f log_debug >/dev/null 2>&1; then
+    log_debug "Starting ${FUNCNAME[0]}()" 1>&2
+  fi
+
+  if [[ -n "${BASHKIT_LOG_FILE:-}" ]]; then
+    printf '%s\n' "${BASHKIT_LOG_FILE}"
+    return 0
+  fi
+
+  local -r dir="${BASHKIT_LOG_DIR:-}"
+  [[ -n "${dir}" ]] || return 0
+
+  local -r _env="${BASHKIT_ENV:-}"
+  if [[ -n "${_env}" ]] && ! core::_logger_env_is_valid "${_env}"; then
+    core::print_stack_trace \
+      "${FUNCNAME[0]}(): BASHKIT_ENV is not a valid environment name:" \
+      "${_env}"
+    return 1
+  fi
+
+  printf '%s\n' "${dir%/}/${_env:-bashkit}.log"
+}
+
 # core::logger_init([init_logger options...])
 #
 # Loads and initializes bash-logger for a bashkit file, unless the logger is
@@ -339,9 +421,11 @@ core::_logger_config_path() {
 #   - `--level "${BASHKIT_LEVEL}"`, when BASHKIT_LEVEL is set. `--verbose`
 #     also sets the level (to DEBUG), so BASHKIT_LEVEL wins over it;
 #   - `--config <file>`, when core::_logger_config_path picks one;
-#   - `--log "${BASHKIT_LOG_FILE}"`, when BASHKIT_LOG_FILE is set. A config
+#   - `--log <file>`, when core::_logger_log_file_path picks one:
+#     BASHKIT_LOG_FILE, or ${BASHKIT_ENV}.log in BASHKIT_LOG_DIR. A config
 #     file's `log_file` must be an absolute path, so a per-checkout path
-#     (like the one bashkit's .envrc sets) has to come from the environment;
+#     (like the directory bashkit's .envrc sets) has to come from the
+#     environment;
 #   - `--name <file>`, the basename of the file that called this function;
 #   - `--stderr-level DEBUG`, so log lines never end up in a caller's
 #     `$(...)` capture;
@@ -362,17 +446,22 @@ core::_logger_config_path() {
 #                      it doesn't recognize.
 #   BASHKIT_LOG_FILE   Optional. File to also write log lines to;
 #                      bash-logger creates its directory if needed.
-#   See also core::_logger_source and core::_logger_config_path.
+#   BASHKIT_LOG_DIR    Optional. Without BASHKIT_LOG_FILE, the directory to
+#                      write ${BASHKIT_ENV}.log in.
+#   See also core::_logger_source, core::_logger_config_path, and
+#   core::_logger_log_file_path.
 # Arguments:
 #   $@   Optional. Extra options for `init_logger`.
 # Outputs:
 #   An error and stack trace to stderr if BASHKIT_VERBOSE or BASHKIT_QUIET
-#   isn't a boolean, or if the logger or a requested config can't be found.
+#   isn't a boolean, if BASHKIT_ENV isn't a valid environment name, or if
+#   the logger or a requested config can't be found.
 #   Whatever `init_logger` writes.
 # Returns:
 #   0 if the logger was already loaded; 1 if BASHKIT_VERBOSE or BASHKIT_QUIET
 #   isn't a boolean; otherwise the first non-zero status of
-#   core::_logger_config_path, core::_logger_source, or `init_logger`.
+#   core::_logger_config_path, core::_logger_log_file_path,
+#   core::_logger_source, or `init_logger`.
 core::logger_init() {
   declare -f init_logger >/dev/null 2>&1 && return 0
 
@@ -404,6 +493,10 @@ core::logger_init() {
   config="$(core::_logger_config_path)" || return
   readonly config
 
+  local log_file
+  log_file="$(core::_logger_log_file_path)" || return
+  readonly log_file
+
   core::_logger_source || return
 
   local -a options=()
@@ -417,7 +510,7 @@ core::logger_init() {
   # After --verbose, so BASHKIT_LEVEL wins over the DEBUG level it sets.
   [[ -n "${level}" ]] && options+=("--level" "${level}")
   [[ -n "${config}" ]] && options+=("--config" "${config}")
-  [[ -n "${BASHKIT_LOG_FILE:-}" ]] && options+=("--log" "${BASHKIT_LOG_FILE}")
+  [[ -n "${log_file}" ]] && options+=("--log" "${log_file}")
   options+=(
     "--name" "${caller##*/}"
     "--stderr-level" "DEBUG"

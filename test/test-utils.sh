@@ -46,9 +46,10 @@ declare -g __BASHKIT_TEST_CASE_DIR=""
 #
 # Globals:
 #   TEST_REPO, TEST_LIB, TEST_BOOTSTRAP, TEST_WORK   Set and exported.
-#   BASHKIT_ENV, BASHKIT_LOG_FILE                    Set and exported.
-#   BASHKIT_LOG_CONFIG, BASHKIT_LOG_CONFIG_DIR, BASHKIT_VERBOSE,
-#   BASHKIT_QUIET, BASHKIT_LEVEL, CDPATH             Unset.
+#   BASHKIT_ENV, BASHKIT_LOG_DIR                     Set and exported.
+#   BASHKIT_LOG_FILE, BASHKIT_LOG_CONFIG, BASHKIT_LOG_CONFIG_DIR,
+#   BASHKIT_VERBOSE, BASHKIT_QUIET, BASHKIT_LEVEL, CDPATH
+#                                                    Unset.
 # Arguments:
 #   None.
 # Outputs:
@@ -75,10 +76,10 @@ test::suite_init() {
   readonly TEST_REPO TEST_LIB TEST_BOOTSTRAP TEST_WORK
   export TEST_REPO TEST_LIB TEST_BOOTSTRAP TEST_WORK
 
-  unset -v CDPATH BASHKIT_LOG_CONFIG BASHKIT_LOG_CONFIG_DIR \
+  unset -v CDPATH BASHKIT_LOG_FILE BASHKIT_LOG_CONFIG BASHKIT_LOG_CONFIG_DIR \
     BASHKIT_VERBOSE BASHKIT_QUIET BASHKIT_LEVEL
   export BASHKIT_ENV="test"
-  export BASHKIT_LOG_FILE="${TEST_REPO}/.log/test.log"
+  export BASHKIT_LOG_DIR="${TEST_REPO}/.log"
 }
 
 # test::_work_remove()

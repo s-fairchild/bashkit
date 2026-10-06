@@ -115,16 +115,23 @@ An outer setting always wins: `BASHKIT_ENV=dev ./script` overrides CI or
 
 ### Logging to a file
 
-Set `BASHKIT_LOG_FILE` to also write log lines to a file. `core::logger_init`
-passes it to `init_logger --log`, which overrides any `log_file` in the config
-and creates the file's directory if needed. Unset, logs only go to stderr
-(and the journal, if the config enables it).
+Set `BASHKIT_LOG_DIR` to also write log lines to `${BASHKIT_ENV}.log` in that
+directory (`bashkit.log` when `BASHKIT_ENV` isn't set). Or set
+`BASHKIT_LOG_FILE` to name the file yourself; it wins when both are set.
+`core::logger_init` passes the file to `init_logger --log`, which overrides
+any `log_file` in the config and creates the file's directory if needed. With
+neither set, logs only go to stderr (and the journal, if the config enables
+it).
 
-- **Developing bashkit:** `.envrc` sets it to `.log/${BASHKIT_ENV}.log` in
-  the checkout (`.log/dev.log` by default). `.log/` is committed but its
-  contents are git-ignored.
-- **Consumers:** set it the same way as `BASHKIT_ENV`, or put an absolute
-  `log_file = ...` in your own config. A config file's `log_file` must be an
+The file name is put together when a script starts, not when
+`BASHKIT_LOG_DIR` is exported, so `BASHKIT_ENV=test ./script` logs to
+`test.log` even though direnv loaded `.envrc` with `dev`.
+
+- **Developing bashkit:** `.envrc` sets `BASHKIT_LOG_DIR` to `.log/` in the
+  checkout, so logs go to `.log/dev.log` by default. `.log/` is committed
+  but its contents are git-ignored.
+- **Consumers:** set either variable the same way as `BASHKIT_ENV`, or put an
+  absolute `log_file = ...` in your own config. A config file's `log_file` must be an
   absolute path, which is why bashkit's shipped configs don't set one.
 
 ## Structure
@@ -261,7 +268,8 @@ make test
 ```
 
 They are plain bash (no bats) in `test/`, one `<dir>/<file>-test.sh` per
-library file, and each can be run on its own. Only `os/bk-bootstrap.sh` and
-`array/contains.sh` have tests so far. For any other file, validate runtime
+library file, and each can be run on its own. Only `os/bk-bootstrap.sh`,
+`array/contains.sh`, and the log-file selection in `core/logger-utils.sh`
+have tests so far. For any other file, validate runtime
 behavior by sourcing it directly once `vendor/bash-logger` is checked out
 (`git submodule update --init`).

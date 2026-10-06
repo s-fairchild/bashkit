@@ -76,8 +76,8 @@ does not exist` for that line. Once it is, every finding is real.
 
 ### Confirm it actually behaves, not just parses
 
-Only `os/bk-bootstrap.sh` and `array/contains.sh` have behavior tests so far (`make test`,
-`test/<dir>/<file>-test.sh`). ShellCheck can't verify a function's runtime behavior (e.g. that
+Only `os/bk-bootstrap.sh`, `array/contains.sh`, and the log-file selection in
+`core/logger-utils.sh` have behavior tests so far (`make test`, `test/<dir>/<file>-test.sh`). ShellCheck can't verify a function's runtime behavior (e.g. that
 `core::require_operands` actually rejects a missing operand, or that a `virsh::*` wrapper
 forwards its arguments correctly) — only that the shell syntax and common pitfalls are clean.
 After ShellCheck passes, validate by sourcing the file directly once `vendor/bash-logger` is

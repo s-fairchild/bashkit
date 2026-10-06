@@ -13,7 +13,7 @@
 . "$(dirname -- "${BASH_SOURCE[0]}")/../test-utils.sh"
 test::suite_init || exit
 # Timings are of loading only: no log file.
-unset -v BASHKIT_LOG_FILE
+unset -v BASHKIT_LOG_DIR
 
 # bench::script_time(label script)
 #
