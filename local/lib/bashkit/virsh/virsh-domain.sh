@@ -2,8 +2,6 @@
 #
 # Thin, operand-validated wrappers around `virsh` domain (VM) subcommands.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_VIRSH_DOMAIN_SOURCED="true"
 
 # virsh::domain_define(xml_file)

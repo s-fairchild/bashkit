@@ -2,14 +2,12 @@
 #
 # shellcheck shell=bash
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_IGNITION_SERVE_SOURCED="true"
 
 # TODO set these as dropin options in forge makefile
-# declare -r __NGINX_DROPIN_CONFIGS_SRC="hack/etc/nginx"
-# declare -r __NGINX_DROPIN_CONFIG_DEFAULT_SRC="${__NGINX_DROPIN_CONFIGS_SRC}/default.conf"
-# declare -r __NGINX_DROPIN_CONFIG_SECURE_SRC="${__NGINX_DROPIN_CONFIGS_SRC}/ignition-secure.conf"
+# readonly __NGINX_DROPIN_CONFIGS_SRC="hack/etc/nginx"
+# readonly __NGINX_DROPIN_CONFIG_DEFAULT_SRC="${__NGINX_DROPIN_CONFIGS_SRC}/default.conf"
+# readonly __NGINX_DROPIN_CONFIG_SECURE_SRC="${__NGINX_DROPIN_CONFIGS_SRC}/ignition-secure.conf"
 
 ignition::usage_serve() {
   cat <<USAGE >&2

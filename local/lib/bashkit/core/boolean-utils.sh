@@ -10,8 +10,6 @@
 # logger-utils.sh (core::logger_resolve, core::print_stack_trace), which
 # sources this file in turn; the guards stop the loop.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED="true"
 
 readonly __BASHKIT_CORE_BOOLEAN_TRUE="true"

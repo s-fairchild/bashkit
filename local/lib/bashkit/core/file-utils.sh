@@ -3,8 +3,6 @@
 # File-reading helpers: read a file (or stdin) into memory, with or without
 # preserving trailing newlines, and parse a file's extension.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_CORE_FILE_UTILS_SOURCED="true"
 
 # core::file_read_builtin([file])

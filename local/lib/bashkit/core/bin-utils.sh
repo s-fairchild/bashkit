@@ -1,7 +1,5 @@
 # shellcheck shell=bash
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_CORE_BIN_UTILS_SOURCED="true"
 
 if [[ "${__BASHKIT_BIN_BW_SOURCED:-}" != "true" ]]; then

@@ -77,9 +77,6 @@ kube::kubectl_file_op() {
   local -r operation="${1}"
   shift
 
-  ( trap - INT QUIT; set_script_name "${SCRIPT_NAME}" ) &
-  set_script_name "${FUNCNAME[0]}(): "
-
   case "${operation}" in
     apply|create|delete) ;;
     *) core::fail "unsupported operation: ${operation}"; return ;;

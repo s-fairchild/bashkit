@@ -2,8 +2,6 @@
 #
 # Thin, operand-validated wrappers around `virsh` network subcommands.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_VIRSH_NETWORK_SOURCED="true"
 
 #####################

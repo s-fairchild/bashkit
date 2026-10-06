@@ -6,8 +6,6 @@
 # logger-utils.sh, which this file sources, so it works before the logger is
 # loaded.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_CORE_CONTRACT_UTILS_SOURCED="true"
 
 core::fail() {

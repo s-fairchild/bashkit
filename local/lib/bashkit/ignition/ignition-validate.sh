@@ -3,8 +3,8 @@
 # shellcheck shell=bash
 
 readonly __BASHKIT_LIB_IGNITION_VALIDATE_SOURCED="true"
-declare -r __IGNITION_VALIDATE_WORKDIR="/data"
-declare -r __IGNITION_VALIDATE_FILES_DIR="files"
+readonly __IGNITION_VALIDATE_WORKDIR="/data"
+readonly __IGNITION_VALIDATE_FILES_DIR="files"
 
 # usage_ignition_validate()
 #

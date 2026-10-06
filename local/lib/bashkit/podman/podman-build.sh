@@ -2,8 +2,6 @@
 #
 # shellcheck shell=bash
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_PODMAN_BUILD_SOURCED="true"
 
 readonly ARGFILE_CONF="argfile.conf"

@@ -3,8 +3,6 @@
 # Thin, operand-validated wrappers around `virsh` storage pool/volume
 # subcommands.
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_VIRSH_POOL_SOURCED="true"
 
 # virsh::pool_define(xml_file)

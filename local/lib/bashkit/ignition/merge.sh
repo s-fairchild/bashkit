@@ -9,7 +9,7 @@ readonly __BASHKIT_LIB_IGNITION_MERGE_SOURCED="true"
 if [[ "$(declare -p __empty_array 2>/dev/null)" != "declare -a"* ]]; then
   declare -ar __empty_array=()
 fi
-declare -r __empty_array_ref='__empty_array'
+readonly __empty_array_ref='__empty_array'
 
 # ignition_gen()
 #

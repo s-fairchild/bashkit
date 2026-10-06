@@ -2,8 +2,6 @@
 #
 # shellcheck shell=bash
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_PODMAN_SECRET_SOURCED="true"
 
 # TODO move these variables into forge, they are unused in this repo.

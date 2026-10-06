@@ -1,7 +1,5 @@
 # shellcheck shell=bash
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_K3S_TOKEN_UTILS_SOURCED="true"
 
 # k3s_gen_token_openssl()
