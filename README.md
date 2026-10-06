@@ -1,7 +1,7 @@
 # bashkit
 
 A standalone library of reusable bash functions and containerized-command
-wrappers. There is no build step, package manifest, or test suite — every
+wrappers. There is no build step or package manifest — every
 file is plain bash, sourced directly or run as a wrapper executable.
 
 `bashkit` is designed to be **vendored as a git submodule** into a consuming
@@ -137,6 +137,8 @@ local/
     envsubst                    # runs docker.io/steve51516/envsubst:latest via podman
     yq                          # runs docker.io/mikefarah/yq via podman
   lib/bashkit/
+    array/
+      contains.sh                # array::contains — literal membership test
     core/
       core.sh                   # umbrella loader for this directory
       bin-utils.sh               # sources local/bin/{bw,coreos-installer,yq} for library-style use
@@ -163,6 +165,9 @@ local/
     openssl/
       openssl.sh                 # umbrella loader for this directory
       cert-utils.sh               # openssl::private_key_gen, openssl::self_signed_cert_gen
+    os/
+      bk-bootstrap.sh             # sourced first by a script: strict shell options, `import`,
+                                  # os::throw, os::print_stack_trace, os::source_http
     podman/
       podman.sh                  # umbrella loader for this directory
       podman-container.sh         # podman::container — runs a nested podman sharing the host's
@@ -184,7 +189,11 @@ local/
 Each subdirectory's `*.sh` umbrella file (`core.sh`, `podman.sh`, `virsh.sh`,
 `ignition.sh`, `k3s.sh`) just sources every leaf file in that directory
 behind a double-inclusion guard — source the umbrella file to pull in a
-whole group, or a leaf file directly if you only need one piece.
+whole group, or a leaf file directly if you only need one piece. Umbrella
+files are optional: `array/` and `os/` have none. A script that sources
+`os/bk-bootstrap.sh` first can `import` a leaf file or a whole directory by
+name instead (`import core/contract-utils virsh`). Its own files are
+`import ./name`: a bare name is looked for in bashkit first.
 
 ## Installing
 
@@ -229,9 +238,9 @@ In short:
 - Shell libraries (`local/lib/bashkit/**/*.sh`) are not executable; only
   `local/bin/*` wrapper executables are.
 
-## Linting
+## Linting and tests
 
-There is no test harness (no bats). Lint with:
+Lint with:
 
 ```bash
 make lint
@@ -243,6 +252,16 @@ This runs `shellcheck` over every shell file using the checked-in
 on staged files before each commit once you run `lefthook install`. See
 `.claude/skills/linting-code/SKILL.md` for details,
 including linting from within a consuming repo and the `SC1091` findings to
-expect standalone. Validate runtime behavior by sourcing the affected file
-directly once `vendor/bash-logger` is checked out
+expect standalone.
+
+Run the behavior tests with:
+
+```bash
+make test
+```
+
+They are plain bash (no bats) in `test/`, one `<dir>/<file>-test.sh` per
+library file, and each can be run on its own. Only `os/bk-bootstrap.sh` and
+`array/contains.sh` have tests so far. For any other file, validate runtime
+behavior by sourcing it directly once `vendor/bash-logger` is checked out
 (`git submodule update --init`).

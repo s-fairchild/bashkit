@@ -43,10 +43,12 @@ bashkit: filenames are lowercase, with **hyphens** to separate words
 (`contract-utils.sh`, `virsh-network.sh`, `local/bin/coreos-installer`).
 Executables in `local/bin/` share their name with the binary they wrap.
 
-Library files are named `<topic>-utils.sh` or `<dir>-<topic>.sh`. Each
-library directory also has an **umbrella file** named after the directory
+Library files are named `<topic>-utils.sh` or `<dir>-<topic>.sh`. A library
+directory may also have an **umbrella file** named after the directory
 (`core/core.sh`, `virsh/virsh.sh`, …). It only sources every leaf file in
-that directory.
+that directory. Umbrella files are optional: `array/` and `os/` have none,
+because a script that sources `os/bk-bootstrap.sh` imports a leaf file or a
+whole directory by name.
 
 ### 1.2 First line — *Difference*
 
@@ -188,7 +190,8 @@ Google allows `::` package separators but doesn't require them. In bashkit,
 every public function **must** be namespaced after its library directory:
 
 ```
-core::*  ignition::*  k3s::*  kube::*  openssl::*  podman::*  virsh::*
+array::*  core::*  ignition::*  k3s::*  kube::*  openssl::*  os::*
+podman::*  virsh::*
 ```
 
 After the `::` comes lowercase `snake_case`, ordered as noun then verb
@@ -204,6 +207,8 @@ After the `::` comes lowercase `snake_case`, ordered as noun then verb
 - **Exception:** a wrapper executable's functions may reuse the wrapped
   binary's name, hyphens included.
   - For example, `core::coreos-installer` and `core::usage_coreos-installer`.
+- **Exception:** `import`, which `os/bk-bootstrap.sh` defines as `os::import`
+  under the name scripts call it by.
 
 ### 3.2 Constants and globals — *Difference*
 

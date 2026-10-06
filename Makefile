@@ -6,13 +6,26 @@ help: ## Show this help message
 
 .PHONY: help
 
-# Every shell file: libs by extension, wrappers by location (no extension).
-LINT_FILES := $(shell find local -type f \( -name '*.sh' -o -path 'local/bin/*' \) | sort)
+# Every shell file: libs and tests by extension, wrappers by location (no
+# extension).
+LINT_FILES := $(shell find local test -type f \( -name '*.sh' -o -path 'local/bin/*' \) | sort)
 
 lint: ## Lint all shell files with ShellCheck using .shellcheckrc (docs/STYLEGUIDE.md)
 	shellcheck $(LINT_FILES)
 
 .PHONY: lint
+
+# Every test file. Other scripts in test/, such as *-bench.sh, are run by hand.
+TEST_FILES := $(shell find test -type f -name '*-test.sh' | sort)
+
+test: ## Run the behavior tests in test/ (the package tests need vendor/bash-logger)
+	@status=0
+	for file in $(TEST_FILES); do
+	  bash "$${file}" || status=1
+	done
+	exit "$${status}"
+
+.PHONY: test
 
 install: ## Install local/bin and local/lib/bashkit into ~/.local, and .bashkit/ configs into ~/.config/bashkit
 	mkdir -p ~/.local/bin

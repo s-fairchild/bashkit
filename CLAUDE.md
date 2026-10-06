@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-`bashkit` (github.com:s-fairchild/bashkit.git) is a standalone library of reusable bash functions and containerized-command wrappers. It has its own git history and is consumed as a **vendored git submodule** by other projects (e.g. at `hack/vendor/bashkit/` inside the `forge` repo). There is no build step, package manifest, or test suite here; every file is plain bash, sourced directly or run as a wrapper executable.
+`bashkit` (github.com:s-fairchild/bashkit.git) is a standalone library of reusable bash functions and containerized-command wrappers. It has its own git history and is consumed as a **vendored git submodule** by other projects (e.g. at `hack/vendor/bashkit/` inside the `forge` repo). There is no build step or package manifest here; every file is plain bash, sourced directly or run as a wrapper executable.
 
 ## Style guide
 
@@ -23,6 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
   Before sourcing, it rejects a `BASHKIT_VERBOSE` or `BASHKIT_QUIET` that isn't a boolean (`core::bool_is_valid`) and resolves the config file, so a bad environment fails without leaving a half-loaded logger. It then calls `init_logger` with, in order: `--verbose` / `--quiet` when `BASHKIT_VERBOSE` / `BASHKIT_QUIET` are true; `--level "${BASHKIT_LEVEL}"` when set (after `--verbose`, so it wins); `--config <file>` when the environment picks one; `--log "${BASHKIT_LOG_FILE}"` when set; `--name <calling file>`; `--stderr-level DEBUG`; then its own operands, which override everything before them. The config file is `BASHKIT_LOG_CONFIG` (explicit path), else `logging-${BASHKIT_ENV}.conf`, else `logging.conf`. The first directory that has it wins: `BASHKIT_LOG_CONFIG_DIR` (if set), this repo's `.bashkit/` (`dev`, `test`, `ci`, `staging`, `prod`), `../../etc/bashkit` relative to this repo (e.g. forge's `hack/etc/bashkit/`), `${XDG_CONFIG_HOME:-~/.config}/bashkit`, `/usr/local/etc/bashkit`, then `/etc/bashkit`. Installed copies have neither repo-relative directory, so they use the user and system directories. A `BASHKIT_ENV` with no matching file anywhere is a hard error. Shipped configs never set `log_file`, because bash-logger requires it to be absolute and consumers would inherit it.
 - `core/logger-utils.sh` and `core/boolean-utils.sh` run before the logger exists, so they must not use the logging API unguarded or source anything else (in particular not `contract-utils.sh`, which sources `logger-utils.sh` and calls `core::logger_init` on load). They source each other; `boolean-utils.sh` points its `# shellcheck source=` directive at `/dev/null` because ShellCheck takes 20s+ per file following that cycle — don't change it back.
+- `os/bk-bootstrap.sh` is the entry point for scripts that load libraries by name. A script sources it first, with nothing from bashkit before it, and then calls `import core/contract-utils virsh` (a file, with or without `.sh`, or a whole directory). A bare name like those is looked for in bashkit's library first; a script imports its own files as `import ./name`. It sets `nounset`, `errexit` and `pipefail` in the calling shell, and aliases `source` and `.` to `os::import_one` in every file parsed afterwards; that is how the files a library sources itself get recorded, so that `import` loads each file once. Imported files run inside a function, so a library that declares a global at its top level needs `declare -g` or `readonly`. The file's header comment and the comment on `os::import_one` describe the search order.
 - bashkit only *reads* `BASHKIT_ENV`, `BASHKIT_LOG_FILE`, `BASHKIT_LOG_CONFIG`, `BASHKIT_LOG_CONFIG_DIR`, `BASHKIT_VERBOSE`, `BASHKIT_QUIET`, and `BASHKIT_LEVEL`; never set them inside a library. Development sets them through the committed `.envrc` (direnv, defaults to `dev`), CI through the workflow's `env:`, and consumers through their own environment. Anything that supplies a fallback uses `${BASHKIT_ENV:-default}`, so an outer value always wins.
 
 ## Structure
@@ -32,6 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 .envrc                  # direnv: BASHKIT_ENV defaults to dev, BASHKIT_LOG_FILE to .log/${BASHKIT_ENV}.log
 .log/                   # local log files; only its .gitignore is tracked
 vendor/bash-logger/     # bash-logger submodule (the logging API every file depends on)
+test/                   # behavior tests: test-utils.sh (harness), <dir>/<file>-test.sh, <dir>/<file>-bench.sh
 local/
   bin/                  # wrapper executables; runnable directly OR sourceable (see core/bin-utils.sh)
     bw                  # flatpak Bitwarden CLI passthrough
@@ -39,6 +41,7 @@ local/
     envsubst            # envsubst via podman
     yq                  # docker.io/mikefarah/yq via podman
   lib/bashkit/
+    array/              # array::* — contains (literal membership test)
     core/               # core::*  — contract-utils (fail, require_operands, require_pipestatus,
                         #            require_nameref, is_option_arg_dup, with_xtrace_suppressed),
                         #            boolean-utils (bool_is_valid, bool_is_true,
@@ -50,11 +53,13 @@ local/
     k3s/                # k3s::*   — cluster token generation
     kube/               # kube::*  — kubectl wait/apply/create/delete, kustomize build/build_apply
     openssl/            # openssl::* — private key / self-signed cert generation
+    os/                 # os::*    — bk-bootstrap (strict shell options; import / os::import,
+                        #            os::import_one, os::source_http, os::throw, os::print_stack_trace)
     podman/             # podman::* — container, secret, volume, build helpers
     virsh/              # virsh::* — domain, network, pool/volume wrappers and *_is_* predicates
 ```
 
-Each directory has an umbrella file named after it (`core/core.sh`, `virsh/virsh.sh`, …) that just sources every leaf file in that directory behind its guard. Add new leaf files to the umbrella. Functions are namespaced by directory (`<dir>::<noun>_<verb>`).
+Most directories have an umbrella file named after them (`core/core.sh`, `virsh/virsh.sh`, …) that just sources every leaf file in that directory behind its guard. Umbrella files are optional: `array/` and `os/` have none, because `import` loads a leaf file or a whole directory by name. Where one exists, add new leaf files to it. Functions are namespaced by directory (`<dir>::<noun>_<verb>`).
 
 ## Install
 
@@ -66,4 +71,4 @@ Copies `local/bin/*` to `~/.local/bin/` and recursively installs `local/lib/bash
 
 ## Linting and validation
 
-There is no test harness (no bats). Lint with `make lint`, which runs `shellcheck` over every shell file using the checked-in `.shellcheckrc`; `.lefthook.yaml` runs the same check on staged files as a pre-commit hook (`lefthook install`). The `linting-code` skill (`.claude/skills/linting-code/SKILL.md`) explains the enabled optional checks, how to lint from a consumer repo, and which `SC1091` findings to expect. Validate runtime behavior by sourcing the affected file directly once `vendor/bash-logger` is initialized, or behind a minimal stub of the logging API.
+Behavior tests are plain bash (no bats) in `test/`: `make test` runs every `test/<dir>/<file>-test.sh`, each of which can also be run on its own. `test/test-utils.sh` is the harness; a case is a script that runs in its own bash process and empty directory. Only `os/bk-bootstrap.sh` and `array/contains.sh` have tests so far. Lint with `make lint`, which runs `shellcheck` over every shell file using the checked-in `.shellcheckrc`; `.lefthook.yaml` runs the same check on staged files as a pre-commit hook (`lefthook install`). The `linting-code` skill (`.claude/skills/linting-code/SKILL.md`) explains the enabled optional checks, how to lint from a consumer repo, and which `SC1091` findings to expect. For a file with no test, validate runtime behavior by sourcing it directly once `vendor/bash-logger` is initialized, or behind a minimal stub of the logging API.
