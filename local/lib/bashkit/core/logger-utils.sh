@@ -120,22 +120,29 @@ core::logger_resolve() {
   printf "%s" "${logger_out}"
 }
 
-# core::print_stack_trace()
+# core::print_stack_trace([message])
 #
-# Logs the current bash call stack at LOG_LEVEL_ERROR, deepest frame first
-# (starting at this function's caller), so a failed contract check --
-# e.g. core::require_operands -- shows every calling function up to the
-# entry-point script instead of just the one-line error. Safe to call from
-# any function; each frame is logged as "at FUNCNAME (BASH_SOURCE:line)",
-# where "line" is the line in that frame where it called into the
-# next-deeper frame.
+# Logs <message>, if given, and then the current bash call stack at
+# LOG_LEVEL_ERROR, deepest frame first (starting at this function's caller),
+# so a failed contract check -- e.g. core::require_operands -- shows every
+# calling function up to the entry-point script instead of just the one-line
+# error. Safe to call from any function; each frame is logged as
+# "at FUNCNAME (BASH_SOURCE:line)", where "line" is the line in that frame
+# where it called into the next-deeper frame.
+#
+# The lines are collected first and reach stderr in a single write(2), so
+# the report stays in one piece when other processes (background jobs,
+# pipeline stages) log to the same stderr at the same time. Pass the error
+# as <message> instead of logging it separately, so it can't be separated
+# from its trace. bash-logger still appends to its log file and the journal
+# one line at a time.
 #
 # Globals:
 #   FUNCNAME, BASH_SOURCE, BASH_LINENO
 # Arguments:
-#   None.
+#   $@   Optional. The error message; the operands are joined with spaces.
 # Outputs:
-#   The call stack, one frame per line, at ERROR level.
+#   The message and the call stack, one frame per line, at ERROR level.
 # Returns:
 #   Always 0.
 core::print_stack_trace() {
@@ -144,11 +151,31 @@ core::print_stack_trace() {
   logger="$(core::logger_resolve error)"
   readonly logger
 
+  # Only stderr is captured; fd 3 keeps stdout as it was, because
+  # bash-logger's `color = auto` tests whether stdout is a terminal.
   local -i i
-  "${logger}" "Stack trace (most recent call first):"
-  for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
-    "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
-  done
+  local report
+  {
+    report="$(
+      {
+        if (( $# > 0 )); then
+          "${logger}" "$*"
+        fi
+        "${logger}" "Stack trace (most recent call first):"
+        for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
+          "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
+        done
+      } 2>&1 1>&3
+    )"
+  } 3>&1
+  readonly report
+
+  # Not printf/echo: bash's builtins flush at every newline, which would be
+  # one write per line again. `cat` copies the here-string in one write.
+  if [[ -n "${report}" ]]; then
+    cat >&2 <<<"${report}"
+  fi
+  return 0
 }
 
 # core::_logger_source()
@@ -256,9 +283,9 @@ core::_logger_config_path() {
   if [[ -n "${explicit_config}" ]]; then
     [[ -r "${explicit_config}" ]] && { printf '%s\n' "${explicit_config}"; return 0; }
 
-    echo "${FUNCNAME[0]}(): BASHKIT_LOG_CONFIG is not a readable file:" \
-      "${explicit_config}" >&2
-    core::print_stack_trace
+    core::print_stack_trace \
+      "${FUNCNAME[0]}(): BASHKIT_LOG_CONFIG is not a readable file:" \
+      "${explicit_config}"
     return 1
   fi
 
@@ -275,9 +302,9 @@ core::_logger_config_path() {
     # Reject `/` and `..` so BASHKIT_ENV can't point outside the config dirs.
     local -r _env_regex='^[A-Za-z0-9_][A-Za-z0-9._-]*$'
     if [[ ! "${_env}" =~ ${_env_regex} || "${_env}" == *..* ]]; then
-      echo "${FUNCNAME[0]}(): BASHKIT_ENV is not a valid environment name:" \
-        "${_env}" >&2
-      core::print_stack_trace
+      core::print_stack_trace \
+        "${FUNCNAME[0]}(): BASHKIT_ENV is not a valid environment name:" \
+        "${_env}"
       return 1
     fi
     conf="logging-${_env}.conf"
@@ -366,9 +393,9 @@ core::logger_init() {
   core::bool_is_valid "${quiet}" || invalid+=" BASHKIT_QUIET=${quiet}"
   readonly invalid
   if [[ -n "${invalid}" ]]; then
-    echo "${FUNCNAME[0]}(): expected true/false, yes/no, on/off, or 1/0:" \
-      "${invalid# }" >&2
-    core::print_stack_trace
+    core::print_stack_trace \
+      "${FUNCNAME[0]}(): expected true/false, yes/no, on/off, or 1/0:" \
+      "${invalid# }"
     return 1
   fi
 

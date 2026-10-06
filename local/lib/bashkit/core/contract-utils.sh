@@ -11,8 +11,8 @@
 readonly __BASHKIT_CORE_CONTRACT_UTILS_SOURCED="true"
 
 core::fail() {
-  log_error "${FUNCNAME[1]}(): $*"
-  core::print_stack_trace
+  # One call, so the error and its trace are written as a single block.
+  core::print_stack_trace "${FUNCNAME[1]}(): $*"
   return 1
 }
 

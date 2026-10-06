@@ -1,7 +1,5 @@
 # shellcheck shell=bash
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_KUBE_KUBECTL_SOURCED="true"
 
 # kube::kubectl_wait(resource [namespace] [timeout])
@@ -37,14 +35,25 @@ kube::kubectl_wait() {
   readonly msg
   log_info "${msg}"
 
-  # TODO wrap kubectl wait output message in log_info/log_error.
-  kubectl wait "${resource}" \
-    -n "${namespace}" \
-    --for=condition="${condition}" \
-    --timeout="${timeout}" || {
-        core::fail "${resource} did not become ${condition} within ${timeout}." \
-          || return
-    }
+  local -ar _cmd=(
+    "kubectl"
+    "wait"
+    "${resource}"
+    "-n"
+    "${namespace}"
+    --for=condition="${condition}"
+    --timeout="${timeout}"
+  )
+  log_info "${_cmd[*]}"
+
+  local -a _cmd_logs
+  _cmd_logs=("$("${_cmd[@]}" 2>&1)") || return
+  readonly _cmd_logs
+
+  local line
+  for line in "${_cmd_logs[@]}"; do
+    log_info "${line}"
+  done
 }
 
 #######################################
@@ -65,29 +74,43 @@ kube::kubectl_wait() {
 kube::kubectl_file_op() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   core::require_operands 1 "$@" || return
-  local -r operation="${1}"; shift
+  local -r operation="${1}"
+  shift
+
+  ( trap - INT QUIT; set_script_name "${SCRIPT_NAME}" ) &
+  set_script_name "${FUNCNAME[0]}(): "
 
   case "${operation}" in
     apply|create|delete) ;;
-    *) core::fail "${FUNCNAME[0]}(): unsupported operation: ${operation}"; return ;;
+    *) core::fail "unsupported operation: ${operation}"; return ;;
   esac
 
   local file="-"
   if (( $# > 0 )); then
-    file="${1}"; shift
-    [[ -n "${file}" ]] || { core::fail "${FUNCNAME[0]}(): file operand is empty"; return; }
+    file="${1:-}"
+    shift
+
+    [[ -n "${file}" ]] || { core::fail "file operand is empty" || return; }
   fi
   readonly file
+  log_debug "$(declare -p file)"
 
-  local source_desc="${file}"
-  [[ "${file}" == "-" ]] && source_desc="stdin"
-  readonly source_desc
+  local -ar _cmd=(
+    "kubectl"
+    "${operation}"
+    "-f"
+    "${file}"
+  )
+  log_info "${_cmd[*]}"
 
-  kubectl "${operation}" -f "${file}" "$@" \
-    || {
-      core::fail "${FUNCNAME[0]}(): failed to ${operation} ${source_desc}" \
-        || return
-    }
+  local _cmd_logs
+  _cmd_logs="$("${_cmd[@]}" 2>&1)" || return
+  readonly _cmd_logs
+
+  local line
+  for line in "${_cmd_logs[@]}"; do
+    log_info "${line}"
+  done
 }
 
 #######################################
@@ -119,6 +142,7 @@ kube::kubectl_create() { kube::kubectl_file_op create "$@" || return; }
 #   0 on success, 1 on failure
 #######################################
 kube::kubectl_delete() { kube::kubectl_file_op delete "$@" || return; }
+
 
 if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
   # shellcheck source=../core/contract-utils.sh

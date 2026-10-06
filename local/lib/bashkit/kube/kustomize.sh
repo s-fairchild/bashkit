@@ -9,17 +9,21 @@ kube::kustomize_build() {
   core::require_operands 1 "$@" || return
   local -r kustomize_dir="${1}"
 
-  [[ -d "${kustomize_dir}" ]] || { core::fail "directory not found: ${kustomize_dir}" || return; }
+  [[ -d "${kustomize_dir}" ]] || {
+    core::fail "directory not found: ${kustomize_dir}" || return
+  }
 
-  local -a cmd=(
+  local -a _cmd=(
     "kustomize"
     "build"
     "${kustomize_dir}"
   )
 
-  log_info "${cmd[*]}"
+  log_info "${_cmd[*]}"
+  # TODO capture _cmd output logs and log via bash-logger
+  # Re-splitting is required here to run the command with arguments.
   # shellcheck disable=SC2068
-  ${cmd[@]}
+  ${_cmd[@]} 2>&1
 }
 
 kube::kustomize_build_apply() {
