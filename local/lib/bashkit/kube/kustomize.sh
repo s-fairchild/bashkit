@@ -1,7 +1,5 @@
 # shellcheck shell=bash
 
-[[ "${XTRACE:-0}" -eq 1 ]] && set -x
-
 readonly __BASHKIT_LIB_KUBE_KUSTOMIZE_SOURCED="true"
 
 kube::kustomize_build() {
