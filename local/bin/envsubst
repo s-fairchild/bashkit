@@ -62,18 +62,38 @@ USAGE
 # Returns:
 #   The container's exit status.
 core::envsubst() {
-  if declare -f log_debug >/dev/null 2>&1; then
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  fi
+  _log_entry_debug() {
+    if declare -f log_debug >/dev/null 2>&1; then
+      log_debug "$*"
+    fi
 
-  local -i OPTIND=1
+    return 0
+  }
+  _log_entry_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
+
+  _log_entry_error() {
+    local msg="${1:-}"
+    if declare -f log_error >/dev/null 2>&1; then
+      log_error "${msg}"
+    else
+      echo "${msg}" 1>&2
+    fi
+  }
+  _log_entry_sensitive() {
+    if declare -f log_sensitive >/dev/null 2>&1; then
+      log_sensitive "$*"
+    fi
+    return 0
+  }
+
   local -a podman_run_options=() podman_env_options=()
-  local opt error_msg
+  local -i OPTIND=1
+  local opt
   while getopts ':s:e:h' opt; do
     case "${opt}" in
-      h) core::usage_envsubst; exit 0 ;;
       s) podman_run_options+=("--secret=${OPTARG},type=env") ;;
       e) podman_env_options+=("${OPTARG}") ;;
+      h) core::usage_envsubst; return 0;;
       :)
         core::usage_envsubst
         error_msg="-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
@@ -97,45 +117,61 @@ core::envsubst() {
     esac
   done
   shift $((OPTIND - 1))
+  readonly podman_env_options
+  _log_entry_sensitive "$(declare -p podman_env_options)"
 
-  podman_run_options+=(
-    "--rm"
+  local -a _cmd=(
+    "podman"
+    "run"
     "-i"
+    "--rm"
     "--env=ENVSUBST_*"
   )
 
   if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
-    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
+    _log_entry_debug "$(declare -p PODMAN_LOG_LEVEL)"
+    _cmd+=("--log-level=${PODMAN_LOG_LEVEL}")
   fi
 
-  local e
+  local -r image="docker.io/steve51516/envsubst:latest"
+  _log_entry_debug "$(declare -p image)"
+  _log_entry_debug "$(declare -p _cmd)"
+
+  # Secret specs and --env values may be sensitive, so they are added after
+  # the debug line above.
+  _cmd+=("${podman_run_options[@]}")
+
+  # Not read-only: both are reassigned for each -e.
+  local e identifier value
   for e in "${podman_env_options[@]}"; do
-    local identifier
     identifier="$(cut -d '=' -f 1 <<< "${e}")"
+
     if ! core::is_valid_var_name "${identifier}"; then
-      error_msg="Variable name identifier is invalid: ${identifier}"
-      if declare -f log_error >/dev/null 2>&1; then
-        log_error "${error_msg}"
-      else
-        echo "${error_msg}" 1>&2
-      fi
+      _log_entry_error "Variable name identifier is invalid: ${identifier}"
+      core::print_stack_trace
       return 1
     fi
 
-    local value
     value="$(cut -d '=' -f 2 <<< "${e}")"
+    _log_entry_debug "Parsed value from --env=value of environment variable: ${identifier}"
+    _log_entry_sensitive "${identifier}=${value}"
+
     # Strip double quotes (if any) so they are not added to the value.
     value="$(tr -d '"' <<< "${value}")"
+    _log_entry_debug "Stripped quotes from value of environment variable: ${identifier}"
+    _log_entry_sensitive "${identifier}=${value}"
 
-    podman_run_options+=("--env=${identifier}=${value}")
+    _cmd+=("--env=${identifier}=${value}")
   done
 
-  local -r image="docker.io/steve51516/envsubst:latest"
+  # After every podman option: what follows the image is passed to envsubst
+  # inside the container.
+  _cmd+=("${image}")
 
-  podman run \
-    "${podman_run_options[@]}" \
-    "${image}" \
-    "$@"
+  _log_entry_sensitive "envsubst options: $*"
+  _cmd+=("$@")
+
+  "${_cmd[@]}"
 }
 
 if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then

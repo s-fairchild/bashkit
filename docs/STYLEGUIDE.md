@@ -389,8 +389,8 @@ that can't be recovered from. For bad input or a failed command, call
   - Exception: getopts error arms (§4.4), which print usage and don't need a
     stack trace.
 
-The one place `exit` is allowed is the `-h` branch of a `local/bin/*` wrapper
-that runs as a script.
+There is no exception for `-h`: a wrapper's entry function returns from its
+`-h` branch too, because scripts that source the wrapper call it.
 
 ### 4.6 Surviving the caller's shell options — *Addition*
 
