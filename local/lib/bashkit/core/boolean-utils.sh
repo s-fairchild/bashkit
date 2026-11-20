@@ -8,33 +8,53 @@
 # core::logger_init calls core::bool_is_true before bash-logger is loaded, so
 # nothing here may need the logging API. The only dependency is
 # logger-utils.sh (core::logger_resolve, core::print_stack_trace), which
-# sources this file in turn; the guards stop the loop.
+# imports this file in turn. `import` loads each file once, which ends the
+# loop.
 
-readonly __BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED="true"
+# logger-utils.sh sources this file, so this directive doesn't point back at
+# it. ShellCheck doesn't recognize that cycle as recursion when it lints from
+# another directory, and follows it 100 levels deep until it runs out of
+# memory. logger-utils.sh is linted on its own.
+#
+# shellcheck source=/dev/null
+. /dev/null
+import core/logger-utils.sh
 
-readonly __BASHKIT_CORE_BOOLEAN_TRUE="true"
-readonly __BASHKIT_CORE_BOOLEAN_FALSE="false"
-readonly __BASHKIT_CORE_BOOLEAN_ON="on"
-readonly __BASHKIT_CORE_BOOLEAN_OFF="off"
-readonly __BASHKIT_CORE_BOOLEAN_YES="yes"
-readonly __BASHKIT_CORE_BOOLEAN_NO="no"
-readonly __BASHKIT_CORE_BOOLEAN_TRUE_INT=1
-readonly __BASHKIT_CORE_BOOLEAN_FALSE_INT=0
+[[ -v __BASHKIT_CORE_BOOLEAN_TRUE ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_TRUE="true"
+[[ -v __BASHKIT_CORE_BOOLEAN_FALSE ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_FALSE="false"
+[[ -v __BASHKIT_CORE_BOOLEAN_ON ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_ON="on"
+[[ -v __BASHKIT_CORE_BOOLEAN_OFF ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_OFF="off"
+[[ -v __BASHKIT_CORE_BOOLEAN_YES ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_YES="yes"
+[[ -v __BASHKIT_CORE_BOOLEAN_NO ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_NO="no"
+[[ -v __BASHKIT_CORE_BOOLEAN_TRUE_INT ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_TRUE_INT=1
+[[ -v __BASHKIT_CORE_BOOLEAN_FALSE_INT ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_FALSE_INT=0
 
 # The status core::bool_is_true returns for a value that isn't a boolean.
-readonly __BASHKIT_CORE_BOOLEAN_INVALID_STATUS=5
+[[ -v __BASHKIT_CORE_BOOLEAN_INVALID_STATUS ]] \
+  || readonly __BASHKIT_CORE_BOOLEAN_INVALID_STATUS=5
 
-# Anchored regexes for every spelling of true and of false. Match them against
-# a lowercased value.
-printf -v __BASHKIT_CORE_BOOLEAN_TRUE_REGEX '^(%s|%s|%s|%s)$' \
-  "${__BASHKIT_CORE_BOOLEAN_TRUE}" "${__BASHKIT_CORE_BOOLEAN_YES}" \
-  "${__BASHKIT_CORE_BOOLEAN_ON}" "${__BASHKIT_CORE_BOOLEAN_TRUE_INT}"
-readonly __BASHKIT_CORE_BOOLEAN_TRUE_REGEX
-
-printf -v __BASHKIT_CORE_BOOLEAN_FALSE_REGEX '^(%s|%s|%s|%s)$' \
-  "${__BASHKIT_CORE_BOOLEAN_FALSE}" "${__BASHKIT_CORE_BOOLEAN_NO}" \
-  "${__BASHKIT_CORE_BOOLEAN_OFF}" "${__BASHKIT_CORE_BOOLEAN_FALSE_INT}"
-readonly __BASHKIT_CORE_BOOLEAN_FALSE_REGEX
+# Anchored regexes for every spelling of true, and of false. Match them
+# against a lowercased value.
+if [[ ! -v __BASHKIT_CORE_BOOLEAN_TRUE_REGEX ]]; then
+  printf -v __BASHKIT_CORE_BOOLEAN_TRUE_REGEX '^(%s|%s|%s|%s)$' \
+    "${__BASHKIT_CORE_BOOLEAN_TRUE}" "${__BASHKIT_CORE_BOOLEAN_YES}" \
+    "${__BASHKIT_CORE_BOOLEAN_ON}" "${__BASHKIT_CORE_BOOLEAN_TRUE_INT}"
+  readonly __BASHKIT_CORE_BOOLEAN_TRUE_REGEX
+fi
+if [[ ! -v __BASHKIT_CORE_BOOLEAN_FALSE_REGEX ]]; then
+  printf -v __BASHKIT_CORE_BOOLEAN_FALSE_REGEX '^(%s|%s|%s|%s)$' \
+    "${__BASHKIT_CORE_BOOLEAN_FALSE}" "${__BASHKIT_CORE_BOOLEAN_NO}" \
+    "${__BASHKIT_CORE_BOOLEAN_OFF}" "${__BASHKIT_CORE_BOOLEAN_FALSE_INT}"
+  readonly __BASHKIT_CORE_BOOLEAN_FALSE_REGEX
+fi
 
 # core::bool_is_valid(value)
 #
@@ -120,12 +140,3 @@ core::bool_is_true() {
 
   [[ "${bool,,}" =~ ${__BASHKIT_CORE_BOOLEAN_TRUE_REGEX} ]]
 }
-
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # logger-utils.sh sources this file, and ShellCheck takes 20s or more per
-  # file to follow that cycle, so it isn't pointed at logger-utils.sh here.
-  # logger-utils.sh is linted on its own.
-  #
-  # shellcheck source=/dev/null
-  . "${BASH_SOURCE[0]%/*}/logger-utils.sh"
-fi

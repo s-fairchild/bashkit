@@ -8,9 +8,11 @@
 #   import core/contract-utils virsh   # from bashkit's library
 #   import ./helpers                   # beside the calling script
 #
-# Source this file first, and nothing from bashkit before it. `import` only
-# knows the files that were loaded after this one, so a library sourced
-# earlier is loaded a second time and fails on its read-only guard.
+# Source this file first. `import` only knows the files that were loaded
+# after this one, so a library sourced earlier is loaded a second time when
+# something imports it. bashkit's own libraries can be sourced any number of
+# times without changing anything (docs/STYLEGUIDE.md §2.1), so that is
+# harmless for them, but it may not be for a file of yours.
 #
 # Sourcing this file changes the calling shell:
 #
@@ -32,6 +34,9 @@
 ### INITIALIZE SYSTEM ###
 ########################
 
+# The one sourcing guard bashkit keeps. The rest of this file records which
+# files were imported, and running it again would empty that record, so
+# every library would be loaded again by its next import.
 [[ "${__bk__bootstrapped:-}" != "true" ]] || return 0
 
 # From: http://wiki.bash-hackers.org/scripting/debuggingtips
@@ -39,8 +44,8 @@ export PS4='+(${BASH_SOURCE##*/}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # Bash will remember & return the highest exitcode in a chain of pipes.
 # This way you can catch the error inside pipes, e.g. mysqldump | gzip
-set -o nounset \
-  -o errexit \
+set -o errexit \
+  -o nounset \
   -o pipefail \
   -o hashall
 

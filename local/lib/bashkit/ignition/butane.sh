@@ -2,8 +2,12 @@
 #
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_IGNITION_BUTANE_SOURCED="true"
-readonly __BASHKIT_LIB_BUTANE_CONTAINER_WORKDIR="/data"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
+
+[[ -v __BASHKIT_LIB_BUTANE_CONTAINER_WORKDIR ]] \
+  || readonly __BASHKIT_LIB_BUTANE_CONTAINER_WORKDIR="/data"
 
 ignition::usage_butane() {
   cat <<USAGE >&2
@@ -111,8 +115,3 @@ ignition::butane() {
     "${image}" \
     "$@"
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

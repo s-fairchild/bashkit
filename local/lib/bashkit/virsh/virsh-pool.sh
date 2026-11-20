@@ -3,7 +3,9 @@
 # Thin, operand-validated wrappers around `virsh` storage pool/volume
 # subcommands.
 
-readonly __BASHKIT_VIRSH_POOL_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # virsh::pool_define(xml_file)
 #
@@ -209,8 +211,3 @@ virsh::vol_is_present() {
     "${vol}" \
     > /dev/null 2>&1
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

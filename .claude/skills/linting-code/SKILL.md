@@ -58,34 +58,34 @@ shellcheck local/lib/bashkit/virsh/virsh-network.sh
 
 ### From a consuming repo
 
-Run from that repo's root. bashkit's `.shellcheckrc` still applies. `bash-logger/logging.sh`
-only resolves if bashkit's own `vendor/bash-logger` submodule was checked out with
-`git submodule update --init --recursive`:
+Run from that repo's root. bashkit's `.shellcheckrc` still applies:
 
 ```bash
 shellcheck hack/vendor/bashkit/local/bin/* hack/vendor/bashkit/local/lib/bashkit/**/*.sh
 ```
 
-### Expected SC1091 when `vendor/bash-logger` isn't initialized
+### No SC1091 is expected
 
-`core/logger-utils.sh` is the only file that sources the external logging library, and its
-`# shellcheck source=` directive points at this repo's own submodule,
-`vendor/bash-logger/logging.sh` (see `CLAUDE.md` "Sourcing and paths"). If the submodule isn't
-checked out (`git submodule update --init`), expect `SC1091: Not following: ... openBinaryFile:
-does not exist` for that line. Once it is, every finding is real.
+`core/logger-utils.sh` is the only file that sources the external logging library. Which copy it
+finds depends on where bash-logger is installed, so its `# shellcheck source=` directive points at
+`/dev/null`, and lint needs no submodule checked out. Every `SC1091` is a real finding: usually a
+`# shellcheck source=` directive whose path, relative to the file it is in, doesn't exist.
 
 ### Confirm it actually behaves, not just parses
 
 Only `os/bk-bootstrap.sh`, `array/contains.sh`, and the log-file selection in
-`core/logger-utils.sh` have behavior tests so far (`make test`, `test/<dir>/<file>-test.sh`). ShellCheck can't verify a function's runtime behavior (e.g. that
+`core/logger-utils.sh` have behavior tests so far (`make test`, `test/<dir>/<file>-test.sh`), plus
+`test/lib/sourcing-test.sh`, which checks that every file can be sourced again without changing
+anything. ShellCheck can't verify a function's runtime behavior (e.g. that
 `core::require_operands` actually rejects a missing operand, or that a `virsh::*` wrapper
 forwards its arguments correctly) — only that the shell syntax and common pitfalls are clean.
-After ShellCheck passes, validate by sourcing the file directly once `vendor/bash-logger` is
-initialized (see `CLAUDE.md`), or by writing a throwaway script
-that defines stub versions of the logging API first (`init_logger`, `log_debug`/`log_info`/
-`log_warn`/`log_error`/`log_fatal`/`log_sensitive`, and whichever `BOOLEAN_*`
-constants the file reads) — defining `init_logger` skips the fallback source — then sources the
-file and calls the functions directly.
+After ShellCheck passes, validate by sourcing `os/bk-bootstrap.sh` and importing the file once
+`vendor/bash-logger` is initialized (see `CLAUDE.md`), or by writing a throwaway script that
+defines stub versions of the logging API first (`init_logger`, `log_debug`/`log_info`/`log_warn`/
+`log_error`/`log_fatal`/`log_sensitive`) — defining `init_logger` makes `core::logger_init` skip
+loading bash-logger — then sources the bootstrap, imports the file, and calls the functions
+directly. Don't source a library without the bootstrap: its `import` lines would run
+ImageMagick's `import(1)`.
 
 ## Style rules
 
@@ -98,7 +98,8 @@ when linting:
 
 * Google baseline (top of the file): quoting, `local` vs. command substitution, arrays.
 * §1.2: first line (`# shellcheck shell=bash` vs. shebang) and the executable bit.
-* §2.2: `# shellcheck source=` directives on every `.` line.
+* §2.2: `# shellcheck source=` directives on the `. /dev/null` line above every `import`, and on
+  every other `.` line.
 * §4.3: `core::require_operands` instead of `${1?...}`.
 * §7.1: ShellCheck suppressions: when they're allowed and the reason syntax.
 * §9: `&&`/`||` chaining: one operator per level, brace groups, no `a && b || c`.
@@ -119,4 +120,4 @@ Common in this repo:
 | SC2015 | `a && b \|\| c` used as if-then-else    | Rewrite as `if`/`else`, or brace the chain (STYLEGUIDE §9). Don't disable |
 | SC1072/SC1073 | Malformed `# shellcheck` directive, usually `-- reason` | Put the reason after a second `#` (STYLEGUIDE §7.1) |
 | SC2312 | `$(...)` or pipeline whose failure is masked | Split the command out and check its status, or append `\|\| true` with a comment explaining why (STYLEGUIDE §4.6) |
-| SC1091 | Can't follow a sourced file                  | Expected when linting standalone (see above). If it fires when linting from a consumer repo with `external-sources=true`, check that the file exists at the `${BASH_SOURCE[0]%/*}`-relative path and that the `# shellcheck source=` directive matches it (STYLEGUIDE §2.2) |
+| SC1091 | Can't follow a sourced file                  | Not expected (see above). Check that the `# shellcheck source=` directive's path, relative to the file it is in, exists (STYLEGUIDE §2.2) |

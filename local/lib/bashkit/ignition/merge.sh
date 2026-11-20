@@ -4,12 +4,28 @@
 # containerized butane, inlines subordinate .ignition.config.merge[] entries with verification
 # hashes, and loads secrets/env files consumed by that pipeline.
 
-readonly __BASHKIT_LIB_IGNITION_MERGE_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
+# shellcheck source=butane.sh
+. /dev/null
+import ignition/butane.sh
+# shellcheck source=../core/sha512sum-utils.sh
+. /dev/null
+import core/sha512sum-utils.sh
+# shellcheck source=../../../bin/yq
+. /dev/null
+import ../../../bin/yq
 
-if [[ "$(declare -p __empty_array 2>/dev/null)" != "declare -a"* ]]; then
-  declare -ar __empty_array=()
+# The array the nameref operands below default to. `declare -g`, because
+# `import` sources this file from inside a function, where a plain `declare`
+# would make it local and gone by the time the functions run. Tested with
+# `declare -p`, not `[[ -v ]]`, because `-v` is false for an empty array.
+if ! declare -p __empty_array >/dev/null 2>&1; then
+  declare -gar __empty_array=()
 fi
-readonly __empty_array_ref='__empty_array'
+[[ -v __empty_array_ref ]] \
+  || readonly __empty_array_ref='__empty_array'
 
 # ignition_gen()
 #
@@ -342,23 +358,3 @@ ignition::gen_config_merge_inlines() {
   # shellcheck disable=SC2034
   out="${ignition_out}"
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
-
-if [[ "${__BASHKIT_LIB_IGNITION_BUTANE_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=butane.sh
-  . "${BASH_SOURCE[0]%/*}/butane.sh"
-fi
-
-if [[ "${__BASHKIT_LIB_CORE_SHA512SUM_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/sha512sum-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/sha512sum-utils.sh"
-fi
-
-if [[ "${__BASHKIT_BIN_YQ_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../../../bin/yq
-  . "${BASH_SOURCE[0]%/*}/../../../bin/yq"
-fi

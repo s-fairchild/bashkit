@@ -4,11 +4,15 @@
 # files, print a secret's data, build a file-driver secretsdata.json, and
 # find secrets by label.
 
-readonly __BASHKIT_LIB_PODMAN_SECRET_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # TODO move these variables into forge, they are unused in this repo.
-readonly __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME="secrets/secrets.json"
-readonly __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME="secrets/filedriver/secretsdata.json"
+[[ -v __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME ]] \
+  || readonly __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME="secrets/secrets.json"
+[[ -v __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME ]] \
+  || readonly __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME="secrets/filedriver/secretsdata.json"
 
 # podman::secret_exists(name)
 #
@@ -404,8 +408,3 @@ podman::secret_filter_by_label() {
     core::fail "${msg}" || return
   fi
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

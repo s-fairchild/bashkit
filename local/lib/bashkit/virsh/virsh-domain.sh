@@ -2,7 +2,9 @@
 #
 # Thin, operand-validated wrappers around `virsh` domain (VM) subcommands.
 
-readonly __BASHKIT_VIRSH_DOMAIN_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # virsh::domain_define(xml_file)
 #
@@ -174,8 +176,3 @@ virsh::domain_is_active() {
 
   [[ "${state}" == "running" ]]
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

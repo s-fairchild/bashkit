@@ -3,7 +3,9 @@
 # ECC private-key and self-signed-certificate generation helpers built on
 # openssl: openssl::private_key_gen, openssl::self_signed_cert_gen.
 
-readonly __BASHKIT_LIB_OPENSSL_CERT_UTILS_SOURCED="true"
+# shellcheck source=../core/logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
 
 # openssl::private_key_gen()
 #
@@ -154,10 +156,3 @@ openssl::self_signed_cert_gen() {
     -out /dev/stdout \
     <<< "${input}"
 }
-
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/logger-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/logger-utils.sh"
-fi
-
-core::logger_init --name "$(basename "$0")"

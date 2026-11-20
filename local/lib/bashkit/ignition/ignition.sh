@@ -4,24 +4,18 @@
 #
 # Add new ignition library files to this file as they are created.
 
-readonly __BASHKIT_LIB_IGNITION_SOURCED="true"
+# shellcheck source=butane.sh
+. /dev/null
+import ignition/butane.sh
 
-if [[ "${__BASHKIT_LIB_IGNITION_BUTANE_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=butane.sh
-  . "${BASH_SOURCE[0]%/*}/butane.sh"
-fi
+# shellcheck source=merge.sh
+. /dev/null
+import ignition/merge.sh
 
-if [[ "${__BASHKIT_LIB_IGNITION_MERGE_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=merge.sh
-  . "${BASH_SOURCE[0]%/*}/merge.sh"
-fi
+# shellcheck source=ignition-validate.sh
+. /dev/null
+import ignition/ignition-validate.sh
 
-if [[ "${__BASHKIT_LIB_IGNITION_VALIDATE_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=ignition-validate.sh
-  . "${BASH_SOURCE[0]%/*}/ignition-validate.sh"
-fi
-
-if [[ "${__BASHKIT_LIB_IGNITION_SERVE_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=serve.sh
-  . "${BASH_SOURCE[0]%/*}/serve.sh"
-fi
+# shellcheck source=serve.sh
+. /dev/null
+import ignition/serve.sh

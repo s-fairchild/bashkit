@@ -2,9 +2,14 @@
 # never need it installed on the host.
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_IGNITION_VALIDATE_SOURCED="true"
-readonly __IGNITION_VALIDATE_WORKDIR="/data"
-readonly __IGNITION_VALIDATE_FILES_DIR="files"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
+
+[[ -v __IGNITION_VALIDATE_WORKDIR ]] \
+  || readonly __IGNITION_VALIDATE_WORKDIR="/data"
+[[ -v __IGNITION_VALIDATE_FILES_DIR ]] \
+  || readonly __IGNITION_VALIDATE_FILES_DIR="files"
 
 # usage_ignition_validate()
 #
@@ -107,10 +112,3 @@ ignition::validate() {
     "${image}" \
     "$@"
 }
-
-export -f ignition::validate
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

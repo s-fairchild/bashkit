@@ -3,8 +3,6 @@
 # Thin podman wrapper around docker.io/mikefarah/yq, so callers never need yq
 # installed on the host.
 
-readonly __BASHKIT_BIN_YQ_SOURCED="true"
-
 # core::yq()
 #
 # Thin podman wrapper around docker.io/mikefarah/yq:4.53.2.
@@ -56,10 +54,16 @@ core::yq() {
     "$@"
 }
 
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../lib/bashkit/core/logger-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"
+# Run as a script, nothing has loaded the bootstrap yet, and the files below
+# need its `import`. Sourced, the caller has loaded it already.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # shellcheck source=../lib/bashkit/os/bk-bootstrap.sh
+  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/os/bk-bootstrap.sh"
 fi
+
+# shellcheck source=../lib/bashkit/core/logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if core::bool_is_valid "${XTRACE:-}" \

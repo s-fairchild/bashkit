@@ -28,14 +28,12 @@
 # The harness doesn't load any of bashkit itself: it has to work when the
 # code under test doesn't.
 
-readonly __BASHKIT_TEST_UTILS_SOURCED="true"
-
-declare -gi __BASHKIT_TEST_COUNT=0
-declare -gi __BASHKIT_TEST_PASSED=0
-declare -gi __BASHKIT_TEST_FAILED=0
-declare -gi __BASHKIT_TEST_SKIPPED=0
+[[ -v __BASHKIT_TEST_COUNT ]] || declare -gi __BASHKIT_TEST_COUNT=0
+[[ -v __BASHKIT_TEST_PASSED ]] || declare -gi __BASHKIT_TEST_PASSED=0
+[[ -v __BASHKIT_TEST_FAILED ]] || declare -gi __BASHKIT_TEST_FAILED=0
+[[ -v __BASHKIT_TEST_SKIPPED ]] || declare -gi __BASHKIT_TEST_SKIPPED=0
 # The directory of the case test::case_run ran last.
-declare -g __BASHKIT_TEST_CASE_DIR=""
+[[ -v __BASHKIT_TEST_CASE_DIR ]] || declare -g __BASHKIT_TEST_CASE_DIR=""
 
 # test::suite_init()
 #

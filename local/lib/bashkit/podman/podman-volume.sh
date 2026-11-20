@@ -2,7 +2,9 @@
 #
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_PODMAN_VOLUME_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # podman::volume_exists(name)
 #
@@ -83,8 +85,3 @@ podman::volume_export_untar_stdout() {
 
   core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

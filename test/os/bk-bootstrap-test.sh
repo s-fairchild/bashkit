@@ -964,7 +964,10 @@ done
 
 names='declare -F | cut -d" " -f3 | grep -vE "^(os::|array::|import$)"
 compgen -v | grep -E "^__(BASHKIT|LIB)_"'
-direct="$(bash -c 'for f in "$@"; do . "${f}"; done'"; ${names}" _ \
+# The libraries load their own dependencies with `import`, so the bootstrap
+# comes first here too; the umbrella files themselves go through the builtin.
+direct="$(bash -c '. "${TEST_BOOTSTRAP}"
+for f in "$@"; do builtin source "${f}"; done'"; ${names}" _ \
   "${umbrellas[@]}" | sort)"
 imported="$(bash -c '. "${TEST_BOOTSTRAP}"; import "$@"'"; ${names}" _ \
   "${packages[@]}" | sort)"
@@ -1000,7 +1003,8 @@ echo "plain=${plain:-unset} global=${global:-unset} constant=${constant:-unset} 
 CASE
 
 # `import` only knows the files loaded after the bootstrap (see the file
-# header).
+# header). bashkit's libraries survive being loaded again; a file that isn't
+# idempotent, like this one, doesn't.
 test::case_run \
   'limitation: a file sourced before the bootstrap is loaded again' 1 '' \
   <<'CASE'
@@ -1009,7 +1013,16 @@ test::case_run \
 import "${TEST_WORK}/app/guarded"
 echo "still running"
 CASE
-test::stderr_has 'limitation: and fails on its read-only guard' \
+test::stderr_has 'limitation: and a file that is not idempotent fails' \
   'GUARDED_SOURCED: readonly variable'
+
+test::case_run \
+  'limitation: a bashkit library sourced before it is loaded again harmlessly' \
+  0 'still running' <<'CASE'
+. "${TEST_LIB}/array/contains.sh"
+. "${TEST_BOOTSTRAP}"
+import array/contains
+array::contains b a b c && echo "still running"
+CASE
 
 test::summary_print

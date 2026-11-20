@@ -4,7 +4,12 @@
 # stdout, and kube::kustomize_build_apply applies the result with
 # kube::kubectl_apply.
 
-readonly __BASHKIT_LIB_KUBE_KUSTOMIZE_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
+# shellcheck source=kubectl.sh
+. /dev/null
+import kube/kubectl.sh
 
 # kube::kustomize_build(kustomize_dir)
 #
@@ -69,13 +74,3 @@ kube::kustomize_build_apply() {
   kube::kustomize_build "$@" | kube::kubectl_apply
   core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
-
-if [[ "${__BASHKIT_LIB_KUBE_KUBECTL_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=kubectl.sh
-  . "${BASH_SOURCE[0]%/*}/kubectl.sh"
-fi

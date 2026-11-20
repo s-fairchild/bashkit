@@ -11,9 +11,11 @@
 # via `echo` rather than the logging API. The only dependency is
 # boolean-utils.sh (core::logger_init reads BASHKIT_VERBOSE and
 # BASHKIT_QUIET with it), which follows the same rule. Don't add others,
-# since contract-utils.sh sources this file.
+# since contract-utils.sh imports this file.
 
-readonly __BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED="true"
+# shellcheck source=boolean-utils.sh
+. /dev/null
+import core/boolean-utils.sh
 
 # core::_echo_stderr(message...)
 #
@@ -556,8 +558,3 @@ core::logger_init() {
   init_logger "${options[@]}" || return
   log_debug "${FUNCNAME[0]}(): init_logger(${options[*]})" 1>&2
 }
-
-if [[ "${__BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=boolean-utils.sh
-  . "${BASH_SOURCE[0]%/*}/boolean-utils.sh"
-fi

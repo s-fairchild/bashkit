@@ -1,23 +1,16 @@
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_CORE_BIN_UTILS_SOURCED="true"
+# shellcheck source=../../../bin/bw
+. /dev/null
+import ../../../bin/bw
+# shellcheck source=../../../bin/coreos-installer
+. /dev/null
+import ../../../bin/coreos-installer
 
-if [[ "${__BASHKIT_BIN_BW_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../../../bin/bw
-  . "${BASH_SOURCE[0]%/*}/../../../bin/bw"
-fi
+# shellcheck source=../../../bin/envsubst
+. /dev/null
+import ../../../bin/envsubst
 
-if [[ "${__BASHKIT_BIN_COREOS_INSTALLER_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../../../bin/coreos-installer
-  . "${BASH_SOURCE[0]%/*}/../../../bin/coreos-installer"
-fi
-
-if [[ "${__BASHKIT_BIN_ENVSUBST_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../../../bin/envsubst
-  . "${BASH_SOURCE[0]%/*}/../../../bin/envsubst"
-fi
-
-if [[ "${__BASHKIT_BIN_YQ_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../../../bin/yq
-  . "${BASH_SOURCE[0]%/*}/../../../bin/yq"
-fi
+# shellcheck source=../../../bin/yq
+. /dev/null
+import ../../../bin/yq

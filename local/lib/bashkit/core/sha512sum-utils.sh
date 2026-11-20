@@ -2,7 +2,9 @@
 #
 # Wraps the real `sha512sum` coreutils binary with stdin-driven generate/check helpers.
 
-readonly __BASHKIT_LIB_CORE_SHA512SUM_UTILS_SOURCED="true"
+# shellcheck source=contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # core::sha512sum(...)
 #
@@ -182,8 +184,3 @@ core::checksum_format_verification_hash_sha512() {
   hash="$(core::checksum_parse_hash "${input}")" || return
   printf "sha512-%s" "${hash}"
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

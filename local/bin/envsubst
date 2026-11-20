@@ -4,8 +4,6 @@
 # (docker.io/steve51516/envsubst:latest), forwarding options via getopts and
 # remaining arguments straight through to the containerized binary.
 
-readonly __BASHKIT_BIN_ENVSUBST_SOURCED="true"
-
 # core::usage_envsubst()
 #
 # Prints usage to stderr.
@@ -166,15 +164,19 @@ core::envsubst() {
   "${_cmd[@]}"
 }
 
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../lib/bashkit/core/logger-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"
+# Run as a script, nothing has loaded the bootstrap yet, and the files below
+# need its `import`. Sourced, the caller has loaded it already.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # shellcheck source=../lib/bashkit/os/bk-bootstrap.sh
+  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/os/bk-bootstrap.sh"
 fi
 
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../lib/bashkit/core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/contract-utils.sh"
-fi
+# shellcheck source=../lib/bashkit/core/logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
+# shellcheck source=../lib/bashkit/core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if core::bool_is_valid "${XTRACE:-}" \

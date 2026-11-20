@@ -2,24 +2,33 @@
 #
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_PODMAN_BUILD_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
-readonly ARGFILE_CONF="argfile.conf"
+[[ -v ARGFILE_CONF ]] \
+  || readonly ARGFILE_CONF="argfile.conf"
 # Reference: podman-build(1)
 # shellcheck disable=SC2034
-readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE="container-image://"
+[[ -v PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE ]] \
+  || readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE="container-image://"
 # Reference: podman-build(1)
 # shellcheck disable=SC2034
-readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE_DOCKER_IMAGE="docker-image://"
+[[ -v PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE_DOCKER_IMAGE ]] \
+  || readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE_DOCKER_IMAGE="docker-image://"
 # Reference: podman-build(1)
 # shellcheck disable=SC2034
-readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE_DOCKER="docker://"
+[[ -v PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE_DOCKER ]] \
+  || readonly PODMAN_BUILD_CONTEXT_CONTAINER_IMAGE_DOCKER="docker://"
 # shellcheck disable=SC2034
-readonly PODMAN_BUILD_LOCAL_REGISTRY="localhost"
+[[ -v PODMAN_BUILD_LOCAL_REGISTRY ]] \
+  || readonly PODMAN_BUILD_LOCAL_REGISTRY="localhost"
 # shellcheck disable=SC2034
-readonly PODMAN_BUILD_REMOTE_REGISTRY="docker.io"
+[[ -v PODMAN_BUILD_REMOTE_REGISTRY ]] \
+  || readonly PODMAN_BUILD_REMOTE_REGISTRY="docker.io"
 # shellcheck disable=SC2034
-readonly __BASHKIT_PODMAN_BUILD_IMAGE_TAG_LATEST="latest"
+[[ -v __BASHKIT_PODMAN_BUILD_IMAGE_TAG_LATEST ]] \
+  || readonly __BASHKIT_PODMAN_BUILD_IMAGE_TAG_LATEST="latest"
 
 # podman::build(build_opts ctx_dir)
 #
@@ -384,8 +393,3 @@ podman::build_with_options() {
   podman::build "$1" \
     "${context}"
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

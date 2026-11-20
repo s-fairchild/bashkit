@@ -2,7 +2,9 @@
 #
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_IGNITION_SERVE_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # TODO set these as dropin options in forge makefile
 # readonly __NGINX_DROPIN_CONFIGS_SRC="hack/etc/nginx"
@@ -183,8 +185,3 @@ ignition::serve() {
     core::fail "podman run command failed." || return
   fi
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

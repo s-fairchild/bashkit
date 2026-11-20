@@ -5,7 +5,9 @@
 # kube::kubectl_file_op. Each logs the command it runs and passes kubectl's
 # output on through the logger.
 
-readonly __BASHKIT_LIB_KUBE_KUBECTL_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # kube::kubectl(args...)
 #
@@ -247,9 +249,3 @@ kube::kubectl_create() { kube::kubectl_file_op create "$@" || return; }
 # Returns:
 #   kube::kubectl_file_op's exit status.
 kube::kubectl_delete() { kube::kubectl_file_op delete "$@" || return; }
-
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

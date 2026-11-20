@@ -7,7 +7,9 @@
 # core::print_stack_trace lives in logger-utils.sh, which this file sources,
 # so it works before the logger is loaded.
 
-readonly __BASHKIT_CORE_CONTRACT_UTILS_SOURCED="true"
+# shellcheck source=logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
 
 # core::fail([message...])
 #
@@ -97,7 +99,6 @@ core::require_operands() {
 #   1 if any stage exited non-zero; 0 otherwise.
 core::require_pipestatus() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-
   core::require_operands 1 "$@" || return
 
   local -i i=0
@@ -272,10 +273,3 @@ core::with_xtrace_suppressed() {
 core::is_valid_var_name() {
   [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
 }
-
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=logger-utils.sh
-  . "${BASH_SOURCE[0]%/*}/logger-utils.sh"
-fi
-
-core::logger_init --name "$(basename "$0")"

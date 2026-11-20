@@ -3,7 +3,9 @@
 # File-reading helpers: read a file (or stdin) into memory, with or without
 # preserving trailing newlines, and parse a file's extension.
 
-readonly __BASHKIT_LIB_CORE_FILE_UTILS_SOURCED="true"
+# shellcheck source=logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
 
 # core::file_read_builtin([file])
 #
@@ -128,8 +130,3 @@ core::file_parse_extension() {
 
   printf "%s" "${output}"
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
