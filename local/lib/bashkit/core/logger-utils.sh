@@ -5,7 +5,7 @@
 # core::logger_init, using the private helpers core::_logger_source and
 # core::_logger_config_path. Also holds core::logger_resolve,
 # core::print_stack_trace, and core::_log_entry_debug, which must work before
-# the logger is loaded, and the __BASHKIT_CORE_ERROR_* message constants.
+# the logger is loaded.
 #
 # Everything here may run before the logger exists, so errors go to stderr
 # via `echo` rather than the logging API. The only dependency is
@@ -14,28 +14,6 @@
 # since contract-utils.sh sources this file.
 
 readonly __BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED="true"
-
-# Message fragments for log lines, e.g. "-${OPTARG} ${..._OPTION_UNKNOWN}" in
-# a getopts error arm. They live here rather than in contract-utils.sh so
-# that every file that loads the logger has them.
-readonly __BASHKIT_CORE_ERROR_ARG_REQUIRED="[argument] is required"
-readonly __BASHKIT_CORE_ERROR_FILE_NOT_FOUND="file not found"
-readonly __BASHKIT_CORE_ERROR_DIR_NOT_FOUND="directory not found"
-readonly __BASHKIT_CORE_ERROR_FAILED_TO_CREATE_DIR="failed to create directory"
-readonly __BASHKIT_CORE_ERROR_FAILED_TO_CREATE_FILE="failed to create file"
-readonly __BASHKIT_CORE_ERROR_FILE_SOURCE_FAILED="failed to source file"
-readonly __BASHKIT_CORE_ERROR_OPTION_REQUIRED="option must be provided"
-readonly __BASHKIT_CORE_ERROR_OPTION_UNKNOWN="option is unknown"
-readonly __BASHKIT_CORE_ERROR_OPTION_ARG_DUP="[option_argument] can only be specified once"
-readonly __BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED="[option argument] is required"
-readonly __BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING="value must be provided"
-readonly __BASHKIT_CORE_ERROR_VAR_UNSET="variable is unset"
-readonly __BASHKIT_CORE_WARN_VAR_UNSET="${__BASHKIT_CORE_ERROR_VAR_UNSET}"
-readonly __BASHKIT_CORE_ERROR_ARRAY_NO_INDEX="array has no indexes set"
-readonly __BASHKIT_CORE_ERROR_OPERAND_REQUIRED="operand is required"
-readonly __BASHKIT_CORE_ERROR_STRING_EMPTY="string cannot be empty"
-readonly __BASHKIT_CORE_ERROR_STDIN_NULL="stdin cannot be null"
-readonly __BASHKIT_CORE_ERROR_REGEX_FAIL="failed regex match"
 
 # core::_echo_stderr(message...)
 #

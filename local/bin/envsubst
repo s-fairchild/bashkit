@@ -96,22 +96,14 @@ core::envsubst() {
       h) core::usage_envsubst; return 0;;
       :)
         core::usage_envsubst
-        error_msg="-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
-        if declare -f log_error >/dev/null 2>&1; then
-          log_error "${error_msg}"
-        else
-          echo "${error_msg}" 1>&2
-        fi
+        _log_entry_error "${FUNCNAME[0]}(-${OPTARG}) operand is required."
+        core::print_stack_trace
         return 1
         ;;
       ?)
         core::usage_envsubst
-        error_msg="-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"
-        if declare -f log_error >/dev/null 2>&1; then
-          log_error "${error_msg}"
-        else
-          echo "${error_msg}" 1>&2
-        fi
+        _log_entry_error "${FUNCNAME[0]}(-${OPTARG}) option is unknown."
+        core::print_stack_trace
         return 1
         ;;
     esac

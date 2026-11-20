@@ -83,7 +83,7 @@ forwards its arguments correctly) — only that the shell syntax and common pitf
 After ShellCheck passes, validate by sourcing the file directly once `vendor/bash-logger` is
 initialized (see `CLAUDE.md`), or by writing a throwaway script
 that defines stub versions of the logging API first (`init_logger`, `log_debug`/`log_info`/
-`log_warn`/`log_error`/`log_fatal`/`log_sensitive`, and whichever `ERROR_*`/`BOOLEAN_*`
+`log_warn`/`log_error`/`log_fatal`/`log_sensitive`, and whichever `BOOLEAN_*`
 constants the file reads) — defining `init_logger` skips the fallback source — then sources the
 file and calls the functions directly.
 

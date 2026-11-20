@@ -60,8 +60,16 @@ ignition::validate() {
         readonly workdir_mount_src="${OPTARG}"
         ;;
       h) ignition::usage_ignition_validate; return 0; ;;
-      :) ignition::usage_ignition_validate; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; return 1; ;;
-      ?) ignition::usage_ignition_validate; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; return 1; ;;
+      :)
+        ignition::usage_ignition_validate
+        log_error "${FUNCNAME[0]}(-${OPTARG}) operand is required."
+        return 1
+        ;;
+      ?)
+        ignition::usage_ignition_validate
+        log_error "${FUNCNAME[0]}(-${OPTARG}) option is unknown."
+        return 1
+        ;;
     esac
   done
   shift $((OPTIND - 1))

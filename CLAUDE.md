@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Files inside this repo source their siblings **relative to their own location** via `${BASH_SOURCE[0]%/*}/<relative-path>`, so libs and `local/bin/*` wrappers work regardless of the caller's CWD. Never switch to CWD- or repo-root-relative paths.
 - Every dependency is sourced behind its double-inclusion guard (`readonly __BASHKIT_LIB_<DIR>_<FILE>_SOURCED="true"`, `__BASHKIT_BIN_<NAME>_SOURCED` for wrappers). Consumers check these names — **never rename a guard** without updating every consumer.
-- The one dependency *outside* this repo is the logging library, `bash-logger/logging.sh`, which supplies `init_logger`, `log_debug`/`log_info`/`log_warn`/`log_error`/`log_fatal`/`log_sensitive`, and the `LOG_LEVEL_*` constants. It does **not** define any `ERROR_*` or `BOOLEAN_*` names: bashkit's own are `__BASHKIT_CORE_ERROR_*` (`core/logger-utils.sh`) and `__BASHKIT_CORE_BOOLEAN_*` (`core/boolean-utils.sh`). Note that `log_*` functions print only their first operand. Nothing sources `logging.sh` by path; files call `core::logger_init` from `core/logger-utils.sh`, which does nothing if `init_logger` is already defined and otherwise sources the first `logging.sh` it finds, in this order:
+- The one dependency *outside* this repo is the logging library, `bash-logger/logging.sh`, which supplies `init_logger`, `log_debug`/`log_info`/`log_warn`/`log_error`/`log_fatal`/`log_sensitive`, and the `LOG_LEVEL_*` constants. Neither it nor bashkit defines `ERROR_*` message constants: messages are written out. The boolean spellings are `__BASHKIT_CORE_BOOLEAN_*` (`core/boolean-utils.sh`). Note that `log_*` functions print only their first operand. Nothing sources `logging.sh` by path; files call `core::logger_init` from `core/logger-utils.sh`, which does nothing if `init_logger` is already defined and otherwise sources the first `logging.sh` it finds, in this order:
   1. `vendor/bash-logger/` — this repo's own submodule (`git submodule update --init`)
   2. `../bash-logger/` beside this repo — a copy vendored next to bashkit (e.g. forge's `hack/vendor/bash-logger/`)
   3. `~/.local/lib/bash-logger/`
@@ -46,8 +46,8 @@ local/
                         #            require_nameref, is_option_arg_dup, with_xtrace_suppressed),
                         #            boolean-utils (bool_is_valid, bool_is_true,
                         #            __BASHKIT_CORE_BOOLEAN_* constants), logger-utils (logger_init,
-                        #            logger_resolve, print_stack_trace, _log_entry_debug,
-                        #            __BASHKIT_CORE_ERROR_* constants), file-utils, sha512sum-utils, yq-utils,
+                        #            logger_resolve, print_stack_trace,
+                        #            _log_entry_debug), file-utils, sha512sum-utils, yq-utils,
                         #            bin-utils (sources local/bin/*)
     ignition/           # ignition::* — butane, merge (butane -> ignition JSON), validate, serve
     k3s/                # k3s::*   — cluster token generation

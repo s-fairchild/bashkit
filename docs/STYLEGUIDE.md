@@ -225,10 +225,11 @@ their consumers:
 - Don't define new unprefixed globals.
   - The `LOG_LEVEL_*` names come from the external logging library, and
     bashkit only reads them.
-  - bash-logger does **not** define `ERROR_*` or `BOOLEAN_*`. Use bashkit's
-    own `__BASHKIT_CORE_ERROR_*` (`core/logger-utils.sh`) and
-    `__BASHKIT_CORE_BOOLEAN_*` (`core/boolean-utils.sh`) constants; an
-    unprefixed `${ERROR_...}` expands to nothing (or fails under `set -u`).
+  - Neither bash-logger nor bashkit defines `ERROR_*` message constants.
+    Write the message out (§4.4). An `${ERROR_...}` expands to nothing, or
+    fails under `set -u`.
+  - The boolean spellings are `__BASHKIT_CORE_BOOLEAN_*`
+    (`core/boolean-utils.sh`).
 - User-facing tunables are unprefixed environment variables that are read
   only.
   - For example, `XTRACE` and `PODMAN_LOG_LEVEL`.
@@ -262,13 +263,13 @@ bashkit:
 # non-empty value there means the flag was already seen once.
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_OPTION_ARG_DUP
+#   None.
 # Arguments:
 #   $1   The option letter/flag being parsed.
 #   $2   The target variable's current value, prior to this OPTARG
 #        assignment.
 # Outputs:
-#   An error if the flag is a duplicate.
+#   An error and stack trace if the flag is a duplicate.
 # Returns:
 #   1 if the flag is a duplicate; 0 otherwise.
 core::is_option_arg_dup() {
@@ -351,8 +352,8 @@ while getopts ':l:h' opt; do
   case "${opt}" in
     h) <ns>::usage_<fn>; return 0 ;;
     l) labels+=("${OPTARG}") ;;
-    :) <ns>::usage_<fn>; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED}"; return 1 ;;
-    ?) <ns>::usage_<fn>; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; return 1 ;;
+    :) <ns>::usage_<fn>; log_error "${FUNCNAME[0]}(-${OPTARG}) operand is required."; return 1 ;;
+    ?) <ns>::usage_<fn>; log_error "${FUNCNAME[0]}(-${OPTARG}) option is unknown."; return 1 ;;
   esac
 done
 shift $((OPTIND - 1))

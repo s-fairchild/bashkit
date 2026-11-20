@@ -91,8 +91,14 @@ ignition::serve() {
         ssl_key="${OPTARG}"
         ;;
       h) ignition::usage_serve; return 0; ;;
-      :) log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; ignition::usage_serve; return 1; ;;
-      ?) log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; ignition::usage_serve; return 1; ;;
+      :)
+        ignition::usage_serve
+        core::fail "${FUNCNAME[0]}(-${OPTARG}) operand is required." || return
+        ;;
+      ?)
+        ignition::usage_serve
+        core::fail "${FUNCNAME[0]}(-${OPTARG}) option is unknown." || return
+        ;;
     esac
   done
   shift $((OPTIND - 1))
@@ -101,14 +107,12 @@ ignition::serve() {
 
   if [[ -z "${ssl_cert}" ]]; then
     ignition::usage_serve
-    log_error "-c ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
-    return 1
+    core::fail "${FUNCNAME[0]}(-c ssl_cert) operand is required." || return
   fi
 
   if [[ -z "${ssl_key}" ]]; then
     ignition::usage_serve
-    log_error "-k ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
-    return 1
+    core::fail "${FUNCNAME[0]}(-k ssl_key) operand is required." || return
   fi
 
   if (( ! ${#secrets[@]} )); then

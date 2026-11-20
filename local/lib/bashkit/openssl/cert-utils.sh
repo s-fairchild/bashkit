@@ -60,7 +60,7 @@ USAGE
 # that list.
 #
 # Globals:
-#   ERROR_OPTION_ARG_REQUIRED, ERROR_OPTION_UNKNOWN
+#   None.
 # Arguments:
 #   -d days               Certificate expiration, in days. (default: 1825)
 #   -c country            Subject "C" field. (default: "")
@@ -122,12 +122,12 @@ openssl::self_signed_cert_gen() {
       h) openssl::usage_self_signed_cert_gen; return 0; ;;
       :)
         openssl::usage_self_signed_cert_gen
-        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED}" \
+        core::fail "${FUNCNAME[0]}(-${OPTARG}) operand is required." \
           || return
         ;;
       ?)
         openssl::usage_self_signed_cert_gen
-        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}" || return
+        core::fail "${FUNCNAME[0]}(-${OPTARG}) option is unknown." || return
         ;;
     esac
   done

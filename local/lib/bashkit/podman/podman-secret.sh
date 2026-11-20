@@ -207,8 +207,7 @@ USAGE
 # path) and any -l labels to each secret.
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED
-#   __BASHKIT_CORE_ERROR_OPTION_UNKNOWN
+#   None.
 # Arguments:
 #   -l label   Additional "key=value" label to apply to each secret.
 #              Repeatable; each value is passed as --label=<value>.
@@ -237,12 +236,13 @@ podman::secret_create_from_file() {
         ;;
       :)
         podman::usage_secret_create_from_file
-        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED}" \
-          || return
+        log_error "${FUNCNAME[0]}(-${OPTARG}) operand is required."
+        return 1
         ;;
       ?)
         podman::usage_secret_create_from_file
-        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}" || return
+        log_error "${FUNCNAME[0]}(-${OPTARG}) option is unknown."
+        return 1
         ;;
     esac
   done
@@ -306,7 +306,7 @@ podman::secret_create_from_file() {
 # `podman secret create` on that host (e.g. via ignition file injection).
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_STDIN_NULL
+#   None.
 # Arguments:
 #   None. Reads podman secret names or IDs from stdin, one per line.
 # Outputs:
@@ -322,7 +322,7 @@ podman::secret_gen_file_secretsdata() {
   input="$(cat)"
   readonly input
   if [[ -t 0 ]]; then
-    log_error "${__BASHKIT_CORE_ERROR_STDIN_NULL}"
+    log_error "${FUNCNAME[0]}() stdin cannot be null."
     return 1
   fi
 

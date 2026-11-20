@@ -12,9 +12,9 @@ logging API from [`bash-logger`](https://github.com/s-fairchild/bash-logger)'s
 - `init_logger`
 - `log_debug`, `log_info`, `log_warn`, `log_error`, `log_fatal`, `log_sensitive`
 
-bash-logger doesn't define any `ERROR_*` or `BOOLEAN_*` constants. bashkit's
-own are `__BASHKIT_CORE_ERROR_*` (`core/logger-utils.sh`) and
-`__BASHKIT_CORE_BOOLEAN_*` (`core/boolean-utils.sh`).
+Neither bash-logger nor bashkit defines `ERROR_*` message constants; messages
+are written out. bashkit's boolean spellings are `__BASHKIT_CORE_BOOLEAN_*`
+(`core/boolean-utils.sh`).
 
 Every file inside this repo sources its own siblings via
 `${BASH_SOURCE[0]%/*}/<relative-path>`, so `local/bin/*` wrappers and
@@ -153,7 +153,7 @@ local/
       contract-utils.sh          # core::fail, core::require_{operands,pipestatus,nameref},
                                   # core::is_option_arg_dup, core::with_xtrace_suppressed
       logger-utils.sh            # core::logger_{init,resolve}, core::print_stack_trace,
-                                  # core::_log_entry_debug, __BASHKIT_CORE_ERROR_* constants
+                                  # core::_log_entry_debug
       file-utils.sh               # core::file_read_builtin, core::file_read_preserve_newlines,
                                   # core::file_parse_extension
       sha512sum-utils.sh          # core::sha512sum wrapper + core::checksum_parse_hash

@@ -61,8 +61,14 @@ ignition::butane() {
         readonly workdir_mount_src="${OPTARG}"
         ;;
       h) ignition::usage_butane; return 0; ;;
-      :) ignition::usage_butane; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; return 1 ;;
-      ?) ignition::usage_butane; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; return 1 ;;
+      :)
+        ignition::usage_butane
+        core::fail "$(basename "${0}") -${OPTARG} operand is required." || return
+        ;;
+      ?)
+        ignition::usage_butane
+        core::fail "$(basename "${0}") -${OPTARG} option is unknown." || return
+        ;;
     esac
   done
   shift $((OPTIND - 1))

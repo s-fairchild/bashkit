@@ -178,30 +178,29 @@ core::is_nameref_valid() {
 # Rejects a repeated single-value getopts flag. Call it from a
 # `case "$opt" in ...)` arm *before* assigning `OPTARG`, passing the target
 # variable's current (pre-assignment) value as <current_value> -- a
-# non-empty value there means the flag was already seen once. If so, logs
-# "-<opt> <current_value> <__BASHKIT_CORE_ERROR_OPTION_ARG_DUP>" and returns
-# 1; otherwise it does nothing.
+# non-empty value there means the flag was already seen once. If so, fails
+# with "-<opt> <current_value> option can only be specified once." (see
+# core::fail); otherwise it does nothing.
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_OPTION_ARG_DUP
+#   None.
 # Arguments:
 #   $1   The option letter/flag being parsed.
 #   $2   The target variable's current value, prior to this OPTARG
 #        assignment.
 # Outputs:
-#   An error if the flag is a duplicate.
+#   An error and stack trace if the flag is a duplicate.
 # Returns:
 #   1 if the flag is a duplicate; 0 otherwise.
 core::is_option_arg_dup() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 2 "$@" || return
-  local -r opt="$1"
-  local -r opt_arg="$2"
+  local -r opt="${1}"
+  local -r opt_arg="${2}"
 
   if [[ -n "${opt_arg}" ]]; then
-    core::fail "-${opt} ${opt_arg} ${__BASHKIT_CORE_ERROR_OPTION_ARG_DUP}" \
-      || return
+    core::fail "-${opt} ${opt_arg} option can only be specified once." || return
   fi
 }
 
@@ -219,7 +218,7 @@ core::is_option_arg_dup() {
 #          call more than once against the same <state_var>.
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_OPTION_UNKNOWN
+#   None.
 # Arguments:
 #   $1   Mode: "save" or "restore".
 #   $2   Name of the caller's state variable (passed by reference).
@@ -252,7 +251,7 @@ core::with_xtrace_suppressed() {
       fi
       ;;
     *)
-      core::fail "${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}: ${mode}" || return
+      core::fail "${FUNCNAME[0]}(-${OPTARG}) option is unknown. mode: ${mode}" || return
       ;;
   esac
 }

@@ -45,9 +45,7 @@ kubectl() { kube::kubectl "$@"; }
 # level if it fails.
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_ARG_REQUIRED
-#   __BASHKIT_CORE_ERROR_OPTION_REQUIRED
-#   __BASHKIT_CORE_ERROR_OPTION_UNKNOWN
+#   None.
 # Arguments:
 #   -r resource    The resource, e.g. deployment/virt-operator. Required.
 #   -n namespace   Optional. Passed to kubectl as `-n <namespace>`. Defaults
@@ -84,8 +82,14 @@ kube::kubectl_wait() {
         ;;
       t) timeout="${OPTARG}"; ;;
       c) condition="${OPTARG}"; ;;
-      :) core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_REQUIRED}" || return; ;;
-      ?) core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}" || return; ;;
+      :)
+        core::fail "$(basename "${0}") -${OPTARG} operand must be provided." \
+          || return
+        ;;
+      ?)
+        core::fail "$(basename "${0}") -${OPTARG} option is unknown." \
+          || return
+        ;;
     esac
   done
   shift $((OPTIND - 1))
@@ -93,8 +97,8 @@ kube::kubectl_wait() {
   log_debug "$(declare -p resource namespace timeout condition)"
 
   if [[ -z "${resource}" ]]; then
-    log_error "${FUNCNAME[0]}(-r resource) ${__BASHKIT_CORE_ERROR_ARG_REQUIRED}"
-    core::fail || return
+    core::fail "${FUNCNAME[0]}(-r resource) operand is required." \
+      || return
   fi
   if [[ -n "${namespace}" ]]; then
     _cmd+=("-n" "${namespace}")
