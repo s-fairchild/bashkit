@@ -2,24 +2,18 @@
 #
 # Umbrella loader for bashkit/local/lib/bashkit/podman library files.
 
-readonly __LIB_PODMAN_SOURCED="true"
+# shellcheck source=podman-container.sh
+. /dev/null
+import podman/podman-container.sh
 
-if [[ "${__BASHKIT_LIB_PODMAN_CONTAINER_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=podman-container.sh
-  . "${BASH_SOURCE[0]%/*}/podman-container.sh"
-fi
+# shellcheck source=podman-secret.sh
+. /dev/null
+import podman/podman-secret.sh
 
-if [[ "${__BASHKIT_LIB_PODMAN_SECRET_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=podman-secret.sh
-  . "${BASH_SOURCE[0]%/*}/podman-secret.sh"
-fi
+# shellcheck source=podman-volume.sh
+. /dev/null
+import podman/podman-volume.sh
 
-if [[ "${__BASHKIT_LIB_PODMAN_VOLUME_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=podman-volume.sh
-  . "${BASH_SOURCE[0]%/*}/podman-volume.sh"
-fi
-
-if [[ "${__BASHKIT_LIB_PODMAN_BUILD_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=podman-build.sh
-  . "${BASH_SOURCE[0]%/*}/podman-build.sh"
-fi
+# shellcheck source=podman-build.sh
+. /dev/null
+import podman/podman-build.sh

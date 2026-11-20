@@ -2,7 +2,9 @@
 #
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_IGNITION_SERVE_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # TODO set these as dropin options in forge makefile
 # readonly __NGINX_DROPIN_CONFIGS_SRC="hack/etc/nginx"
@@ -70,44 +72,53 @@ ignition::serve() {
   while getopts ':i:s:d:e:hc:k:' opt; do
     case "${opt}" in
       i)
-        core::is_option_arg_dup "${opt}" "${ignition}" \
-          || { ignition::usage_serve; return 1; }
-        readonly ignition="${OPTARG}"
+        if ! core::is_option_arg_dup "${opt}" "${ignition}"; then
+          core::fail ignition::usage_serve || return
+        fi
+        ignition="${OPTARG}"
         ;;
       s) secrets+=("${OPTARG}"); ;;
       d) dropins+=("${OPTARG}"); ;;
       e) env_prefixes+=("${OPTARG}"); ;;
       c)
-        core::is_option_arg_dup "${opt}" "${ssl_cert}" \
-          || { ignition::usage_serve; return 1; }
-        readonly ssl_cert="${OPTARG}"
+        if ! core::is_option_arg_dup "${opt}" "${ssl_cert}"; then
+          core::fail ignition::usage_serve || return
+        fi
+        ssl_cert="${OPTARG}"
         ;;
       k)
-        core::is_option_arg_dup "${opt}" "${ssl_key}" \
-          || { ignition::usage_serve; return 1; }
-        readonly ssl_key="${OPTARG}"
+        if ! core::is_option_arg_dup "${opt}" "${ssl_key}"; then
+          core::fail ignition::usage_serve || return
+        fi
+        ssl_key="${OPTARG}"
         ;;
       h) ignition::usage_serve; return 0; ;;
-      :) log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; ignition::usage_serve; return 1; ;;
-      ?) log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; ignition::usage_serve; return 1; ;;
+      :)
+        ignition::usage_serve
+        core::fail "${FUNCNAME[0]}(-${OPTARG}) operand is required." || return
+        ;;
+      ?)
+        ignition::usage_serve
+        core::fail "${FUNCNAME[0]}(-${OPTARG}) option is unknown." || return
+        ;;
     esac
   done
   shift $((OPTIND - 1))
+  readonly ignition secrets dropins env_prefixes ssl_cert ssl_key
+  log_debug "$(declare -p ignition secrets dropins env_prefixes ssl_cert ssl_key)"
 
   if [[ -z "${ssl_cert}" ]]; then
     ignition::usage_serve
-    log_error "-c ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
-    return 1
+    core::fail "${FUNCNAME[0]}(-c ssl_cert) operand is required." || return
   fi
 
   if [[ -z "${ssl_key}" ]]; then
     ignition::usage_serve
-    log_error "-k ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
-    return 1
+    core::fail "${FUNCNAME[0]}(-k ssl_key) operand is required." || return
   fi
 
   if (( ! ${#secrets[@]} )); then
-    log_warn "No -s option(s) provided. No secrets will be mounted."
+    log_warn "${FUNCNAME[0]}([-s secret]) option(s) not provided. No secrets will be mounted."
   fi
 
   log_sensitive "$(declare -p ignition secrets dropins env_prefixes ssl_cert ssl_key)"
@@ -143,8 +154,7 @@ ignition::serve() {
       podman_run_options+=("--volume=./${item}:${nginx_dropin_target}/$(basename "${item}"):ro")
     else
       ignition::usage_serve
-      log_error "dropin file not found: ${item}"
-      return 1
+      core::fail "dropin file not found: ${item}" || return
     fi
   done
 
@@ -153,8 +163,7 @@ ignition::serve() {
       podman_run_options+=("--secret=${item},target=${nginx_serve_root}/secrets/${item}")
     else
       ignition::usage_serve
-      log_error "podman secret not found: ${item}"
-      return 1
+      core::fail "podman secret not found: ${item}" || return
     fi
   done
 
@@ -162,6 +171,7 @@ ignition::serve() {
     # Strip a trailing '*' so an already-globbed prefix does not become '**'.
     podman_run_options+=("--env=${item%\*}*")
   done
+  readonly podman_run_options
   log_sensitive "$(declare -p podman_run_options)"
 
   # https://images.redhat.com/?name=nginx&version=latest
@@ -171,12 +181,7 @@ ignition::serve() {
     "${podman_run_options[@]}" \
     "${image}" \
     "$@"; then
-    log_error "podman run command failed."
-    return 1
+
+    core::fail "podman run command failed." || return
   fi
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

@@ -1,6 +1,11 @@
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_CORE_YQ_UTILS_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
+# shellcheck source=../../../bin/yq
+. /dev/null
+import ../../../bin/yq
 
 core::yq_validate_output() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
@@ -19,13 +24,3 @@ core::yq_validate_output() {
       || return
   }
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
-
-if [[ "${__BASHKIT_BIN_YQ_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../../../bin/yq
-  . "${BASH_SOURCE[0]%/*}/../../../bin/yq"
-fi

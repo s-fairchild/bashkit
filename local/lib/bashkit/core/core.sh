@@ -4,39 +4,30 @@
 #
 # Add new core library files to this file as they are created.
 
-readonly __BASHKIT_LIB_CORE_SOURCED="true"
+# shellcheck source=bin-utils.sh
+. /dev/null
+import core/bin-utils.sh
 
-if [[ "${__BASHKIT_LIB_CORE_BIN_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=bin-utils.sh
-  . "${BASH_SOURCE[0]%/*}/bin-utils.sh"
-fi
+# shellcheck source=boolean-utils.sh
+. /dev/null
+import core/boolean-utils.sh
 
-if [[ "${__BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=boolean-utils.sh
-  . "${BASH_SOURCE[0]%/*}/boolean-utils.sh"
-fi
+# shellcheck source=contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/contract-utils.sh"
-fi
+# shellcheck source=file-utils.sh
+. /dev/null
+import core/file-utils.sh
 
-if [[ "${__BASHKIT_LIB_CORE_FILE_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=file-utils.sh
-  . "${BASH_SOURCE[0]%/*}/file-utils.sh"
-fi
+# shellcheck source=logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
 
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=logger-utils.sh
-  . "${BASH_SOURCE[0]%/*}/logger-utils.sh"
-fi
+# shellcheck source=sha512sum-utils.sh
+. /dev/null
+import core/sha512sum-utils.sh
 
-if [[ "${__BASHKIT_LIB_CORE_SHA512SUM_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=sha512sum-utils.sh
-  . "${BASH_SOURCE[0]%/*}/sha512sum-utils.sh"
-fi
-
-if [[ "${__BASHKIT_LIB_CORE_YQ_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=yq-utils.sh
-  . "${BASH_SOURCE[0]%/*}/yq-utils.sh"
-fi
+# shellcheck source=yq-utils.sh
+. /dev/null
+import core/yq-utils.sh

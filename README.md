@@ -12,15 +12,17 @@ logging API from [`bash-logger`](https://github.com/s-fairchild/bash-logger)'s
 - `init_logger`
 - `log_debug`, `log_info`, `log_warn`, `log_error`, `log_fatal`, `log_sensitive`
 
-bash-logger doesn't define any `ERROR_*` or `BOOLEAN_*` constants. bashkit's
-own are `__BASHKIT_CORE_ERROR_*` (`core/logger-utils.sh`) and
-`__BASHKIT_CORE_BOOLEAN_*` (`core/boolean-utils.sh`).
+Neither bash-logger nor bashkit defines `ERROR_*` message constants; messages
+are written out. bashkit's boolean spellings are `__BASHKIT_CORE_BOOLEAN_*`
+(`core/boolean-utils.sh`).
 
-Every file inside this repo sources its own siblings via
-`${BASH_SOURCE[0]%/*}/<relative-path>`, so `local/bin/*` wrappers and
-`local/lib/bashkit/**/*.sh` libraries work correctly regardless of the
-caller's CWD. If `init_logger` isn't already defined, `core::logger_init`
-(`core/logger-utils.sh`) sources the first `logging.sh` it finds:
+A script sources `local/lib/bashkit/os/bk-bootstrap.sh` first and then loads
+bashkit with `import`. Every library imports its own dependencies by name,
+so `local/bin/*` wrappers and `local/lib/bashkit/**/*.sh` libraries work
+regardless of the caller's CWD. A wrapper run as a script sources the
+bootstrap itself. Sourcing a library never initializes the logger: the
+script calls `core::logger_init` (`core/logger-utils.sh`), which, if
+`init_logger` isn't already defined, sources the first `logging.sh` it finds:
 
 1. `vendor/bash-logger/` — bashkit's own submodule. Consumers need
    `git submodule update --init --recursive` to check it out.
@@ -153,7 +155,7 @@ local/
       contract-utils.sh          # core::fail, core::require_{operands,pipestatus,nameref},
                                   # core::is_option_arg_dup, core::with_xtrace_suppressed
       logger-utils.sh            # core::logger_{init,resolve}, core::print_stack_trace,
-                                  # __BASHKIT_CORE_ERROR_* constants
+                                  # core::_log_entry_debug
       file-utils.sh               # core::file_read_builtin, core::file_read_preserve_newlines,
                                   # core::file_parse_extension
       sha512sum-utils.sh          # core::sha512sum wrapper + core::checksum_parse_hash
@@ -194,13 +196,12 @@ local/
 ```
 
 Each subdirectory's `*.sh` umbrella file (`core.sh`, `podman.sh`, `virsh.sh`,
-`ignition.sh`, `k3s.sh`) just sources every leaf file in that directory
-behind a double-inclusion guard — source the umbrella file to pull in a
-whole group, or a leaf file directly if you only need one piece. Umbrella
-files are optional: `array/` and `os/` have none. A script that sources
-`os/bk-bootstrap.sh` first can `import` a leaf file or a whole directory by
-name instead (`import core/contract-utils virsh`). Its own files are
-`import ./name`: a bare name is looked for in bashkit first.
+`ignition.sh`, `k3s.sh`) just imports every leaf file in that directory.
+After sourcing `os/bk-bootstrap.sh`, a script imports a leaf file, an
+umbrella file, or a whole directory by name
+(`import core/contract-utils virsh`). Umbrella files are optional: `array/`
+and `os/` have none, since a directory can be imported directly. A script's
+own files are `import ./name`: a bare name is looked for in bashkit first.
 
 ## Installing
 
@@ -227,10 +228,9 @@ In short:
 
 - Functions are namespaced by directory: `core::*`, `virsh::*`, `podman::*`,
   `ignition::*`, `k3s::*`, `openssl::*`.
-- Every sourced file guards against double-inclusion with a
-  `readonly __BASHKIT_LIB_<NAME>_SOURCED="true"` at the top, checked before
-  re-sourcing a dependency — don't rename these without updating every call
-  site across every consumer.
+- Every sourced file can be sourced again without changing anything: there
+  are no double-inclusion guards, and constants are only defined if they
+  aren't already (`[[ -v X ]] || readonly X="..."`).
 - Argument validation goes through `core::require_operands N "$@" || return`
   followed by `local -r x="$1"`, not manual `${1?...}` checks.
 - Function entry is logged as the first line of every function:

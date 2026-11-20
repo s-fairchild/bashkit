@@ -4,9 +4,6 @@
 # (quay.io/coreos/coreos-installer:release), forwarding options via getopts
 # and remaining arguments straight through to the containerized binary.
 
-readonly __BASHKIT_BIN_COREOS_INSTALLER_SOURCED="true"
-readonly __INSTALLER_WORKDIR="/data"
-
 # core::usage_coreos-installer()
 #
 # Prints usage to stderr.
@@ -58,90 +55,111 @@ USAGE
 # Returns:
 #   The exit status of `podman run`.
 core::coreos-installer() {
-  if declare -f log_debug >/dev/null 2>&1; then
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-  fi
+  _log_entry_debug() {
+    if declare -f log_debug >/dev/null 2>&1; then
+      log_debug "$*"
+    fi
+    return 0
+  }
+  _log_entry_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
-  local -a secrets=()
-  local -a mounts=()
-  local opt error_msg OPTIND=1
+  _log_entry_error() {
+    if declare -f log_error >/dev/null 2>&1; then
+      log_error "$*"
+    else
+      echo "$*" 1>&2
+    fi
+    return 0
+  }
+
+  _log_entry_sensitive() {
+    if declare -f log_sensitive >/dev/null 2>&1; then
+      log_sensitive "$*"
+    fi
+    return 0
+  }
+
+  local -a secrets=() mounts=()
+  local -i OPTIND=1
+  local opt
+  # TODO add option for mounting container environment variables
+  # Reference hack/vendor/bashkit/local/bin/envsubst
   while getopts ':s:m:h' opt; do
     case "${opt}" in
-      h) core::usage_coreos-installer; exit 0 ;;
       s) secrets+=("${OPTARG}"); ;;
       m) mounts+=("${OPTARG}"); ;;
+      h) core::usage_coreos-installer; return 0 ;;
       :)
         core::usage_coreos-installer
-        error_msg="-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"
-        if declare -f log_error >/dev/null 2>&1; then
-          log_error "${error_msg}"
-        else
-          echo "${error_msg}" 1>&2
-        fi
+        _log_entry_error "${FUNCNAME[0]}(-${OPTARG}) operand is required."
+        core::print_stack_trace
         return 1
         ;;
       ?)
         core::usage_coreos-installer
-        error_msg="-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"
-        if declare -f log_error >/dev/null 2>&1; then
-          log_error "${error_msg}"
-        else
-          echo "${error_msg}" 1>&2
-        fi
+        _log_entry_error "${FUNCNAME[0]}(-${OPTARG}) option is unknown"
+        core::print_stack_trace
         return 1
         ;;
     esac
   done
   shift $((OPTIND - 1))
+  readonly secrets mounts
+  _log_entry_debug "$(declare -p secrets mounts)"
 
-  local -r image="quay.io/coreos/coreos-installer:release"
-  local -a podman_run_options=(
+  local -a _cmd=(
+    "podman"
+    "run"
     "-i"
     "--rm"
     "--env=BU_*"
     "--security-opt=label=disable"
-    "--volume=${PWD}:${__INSTALLER_WORKDIR}"
-    "--workdir=${__INSTALLER_WORKDIR}"
+    "--volume=${PWD}:/data"
+    "--workdir=/data"
   )
 
   if [[ -n "${PODMAN_LOG_LEVEL:-}" ]]; then
-    podman_run_options+=("--log-level=${PODMAN_LOG_LEVEL}")
+    _log_entry_debug "$(declare -p PODMAN_LOG_LEVEL)"
+    _cmd+=("--log-level=${PODMAN_LOG_LEVEL}")
   fi
 
   local s
   for s in "${secrets[@]}"; do
-    podman_run_options+=("--secret=${s}")
+    _log_entry_debug "Adding ${s} to podman secrets to be mounted."
+    _cmd+=("--secret=${s}")
   done
 
   local m
   for m in "${mounts[@]}"; do
-    podman_run_options+=("--mount=${m}")
+    _log_entry_debug "Adding mount point ${m} to be mounted."
+    _cmd+=("--mount=${m}")
   done
 
+  _log_entry_sensitive "coreos-installer options: $*"
 
-  if declare -f log_debug >/dev/null 2>&1; then
-    log_debug "$(declare -p __INSTALLER_WORKDIR)"
-    log_debug "$(declare -p image)"
-    log_sensitive "$(declare -p podman_run_options)"
-    log_sensitive "coreos-installer options: $*"
-  fi
+  local -r image="quay.io/coreos/coreos-installer:release"
+  _log_entry_debug "$(declare -p image)"
 
-  podman run \
-    "${podman_run_options[@]}" \
-    "${image}" \
-    "$@"
+  _cmd+=("${image}")
+  _log_entry_debug "$(declare -p _cmd)"
+  _cmd+=("$@")
+
+  "${_cmd[@]}"
 }
 
-
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../lib/bashkit/core/logger-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/logger-utils.sh"
+# Run as a script, nothing has loaded the bootstrap yet, and the files below
+# need its `import`. Sourced, the caller has loaded it already.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # shellcheck source=../lib/bashkit/os/bk-bootstrap.sh
+  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/os/bk-bootstrap.sh"
 fi
 
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../lib/bashkit/core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/core/contract-utils.sh"
-fi
+# shellcheck source=../lib/bashkit/core/logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
+# shellcheck source=../lib/bashkit/core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if core::bool_is_valid "${XTRACE:-}" \

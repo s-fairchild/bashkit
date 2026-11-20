@@ -2,9 +2,14 @@
 # never need it installed on the host.
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_IGNITION_VALIDATE_SOURCED="true"
-readonly __IGNITION_VALIDATE_WORKDIR="/data"
-readonly __IGNITION_VALIDATE_FILES_DIR="files"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
+
+[[ -v __IGNITION_VALIDATE_WORKDIR ]] \
+  || readonly __IGNITION_VALIDATE_WORKDIR="/data"
+[[ -v __IGNITION_VALIDATE_FILES_DIR ]] \
+  || readonly __IGNITION_VALIDATE_FILES_DIR="files"
 
 # usage_ignition_validate()
 #
@@ -53,13 +58,23 @@ ignition::validate() {
     case "${opt}" in
       s) podman_run_options+=("--secret=${OPTARG}"); ;;
       m)
-        core::is_option_arg_dup "${opt}" "${workdir_mount_src}" \
-          || { ignition::usage_ignition_validate; return 1; }
+        if ! core::is_option_arg_dup "${opt}" "${workdir_mount_src}"; then
+          ignition::usage_ignition_validate
+          return 1
+        fi
         readonly workdir_mount_src="${OPTARG}"
         ;;
       h) ignition::usage_ignition_validate; return 0; ;;
-      :) ignition::usage_ignition_validate; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; return 1; ;;
-      ?) ignition::usage_ignition_validate; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; return 1; ;;
+      :)
+        ignition::usage_ignition_validate
+        log_error "${FUNCNAME[0]}(-${OPTARG}) operand is required."
+        return 1
+        ;;
+      ?)
+        ignition::usage_ignition_validate
+        log_error "${FUNCNAME[0]}(-${OPTARG}) option is unknown."
+        return 1
+        ;;
     esac
   done
   shift $((OPTIND - 1))
@@ -97,10 +112,3 @@ ignition::validate() {
     "${image}" \
     "$@"
 }
-
-export -f ignition::validate
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

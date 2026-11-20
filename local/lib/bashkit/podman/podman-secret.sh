@@ -1,30 +1,41 @@
-# hack/lib/podman/podman-secret.sh
-#
 # shellcheck shell=bash
+#
+# podman secret helpers: test for a secret, create one from stdin or from
+# files, print a secret's data, build a file-driver secretsdata.json, and
+# find secrets by label.
 
-readonly __BASHKIT_LIB_PODMAN_SECRET_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
 # TODO move these variables into forge, they are unused in this repo.
-readonly __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME="secrets/secrets.json"
-readonly __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME="secrets/filedriver/secretsdata.json"
+[[ -v __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME ]] \
+  || readonly __BASHKIT_LIB_PODMAN_SECRETS_METADATA_FILENAME="secrets/secrets.json"
+[[ -v __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME ]] \
+  || readonly __BASHKIT_LIB_PODMAN_SECRETS_FILEDRIVER_FILENAME="secrets/filedriver/secretsdata.json"
 
 # podman::secret_exists(name)
 #
-# Returns 0 if a podman secret with the given name or ID exists, non-zero otherwise.
-# Thin wrapper around `podman secret exists` for use in conditional expressions.
+# Tests whether a podman secret with the given name or ID exists. A thin
+# wrapper around `podman secret exists` for use in conditionals.
 #
+# Globals:
+#   None.
 # Arguments:
-#   $1   Podman secret name or ID to check.
+#   $1   The podman secret name or ID.
+# Outputs:
+#   An error and stack trace if <name> is missing or empty.
 # Returns:
-#   0 if the secret exists; `podman secret exists`'s exit status otherwise.
+#   1 if <name> is missing or empty; `podman secret exists`'s exit status
+#   otherwise (0 if the secret exists).
 podman::secret_exists() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   core::require_operands 1 "$@" || return
   local -r s="${1:-}"
 
-  [[ -n "${s}" ]] || {
+  if [[ -z "${s}" ]]; then
     core::fail "${FUNCNAME[0]}(s=\${1}) s=\$1 cannot be empty." || return
-  }
+  fi
 
   podman secret exists "${s}"
 }
@@ -34,33 +45,40 @@ podman::secret_exists() {
 # Prints podman::secret_create_replace_from_stdin()'s usage message to stderr.
 podman::usage_secret_create_replace_from_stdin() {
   cat <<USAGE >&2
-Usage: podman_secret_create_replace_from_stdin [-l label]... [-h] secret_name < input
+Usage: podman::secret_create_replace_from_stdin [-l label]... [-h] secret_name < input
 
 Creates or replaces a podman secret from stdin using \`podman secret create --replace\`.
-Reads secret data from stdin; aborts if stdin is empty. Standard provenance labels
-(generating file, sourced file, function name) are always applied.
+Fails if stdin is empty. Provenance labels (generating file, sourced file, function
+name, and the repo's remote.origin.url when git has one) are always applied.
 
 Options:
   -l label  Additional "key=value" label to apply to the secret.
             May be specified multiple times.
-  -h        Print this usage message and exit.
+  -h        Print this usage message and return.
 USAGE
 }
 
 # podman::secret_create_replace_from_stdin([-l label]... secret_name)
 #
-# Creates or replaces a podman secret from stdin using `podman secret create --replace`.
-# Reads secret data from stdin; aborts if stdin is empty.
-# Standard provenance labels (generating file, sourced file, function name) are always
-# applied.
+# Creates or replaces a podman secret from stdin using
+# `podman secret create --replace`. Fails if stdin is empty. Always applies
+# provenance labels: the generating file, sourced file and function name,
+# and the repo's remote.origin.url when `git config` has one.
 #
+# Globals:
+#   None.
 # Arguments:
-#   -l label       Additional "key=value" label to apply to the secret. Repeatable.
-#   secret_name    Name of the podman secret to create or replace.
+#   -l label   Additional "key=value" label to apply to the secret.
+#              Repeatable.
+#   -h         Print usage and return 0.
+#   $1         The name of the podman secret to create or replace.
 # Outputs:
-#   Reads secret data from stdin.
+#   Reads the secret data from stdin. Writes `podman secret create`'s output
+#   to stdout. Usage text on -h or a bad option; an error and stack trace on
+#   a bad option, a missing <secret_name>, empty stdin, or a failed
+#   `podman secret create`.
 # Returns:
-#   Non-zero (via fatal) if the secret name/stdin are missing, or secret creation fails.
+#   0 on success or -h; 1 otherwise.
 podman::secret_create_replace_from_stdin() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
@@ -130,16 +148,19 @@ podman::secret_create_replace_from_stdin() {
 
 # podman::secret_showsecret(name)
 #
-# Prints the raw secret data for a named podman secret to stdout.
-# Uses `podman secret inspect --showsecret` with the SecretData Go template field.
-# Aborts if the secret name argument is missing or empty.
+# Prints a podman secret's raw data, using `podman secret inspect
+# --showsecret` with the {{.SecretData}} Go template.
 #
+# Globals:
+#   None.
 # Arguments:
-#   $1   Podman secret name to retrieve data from.
+#   $1   The podman secret name or ID.
 # Outputs:
-#   Writes the secret's raw data to stdout.
+#   The secret's raw data on stdout. An error and stack trace if <name> is
+#   missing or empty.
 # Returns:
-#   Non-zero (via fatal) if the secret name is missing or empty.
+#   1 if <name> is missing or empty; `podman secret inspect`'s exit status
+#   otherwise.
 podman::secret_showsecret() {
   log_debug "Starting ${FUNCNAME[0]}()"
   core::require_operands 1 "$@" || return
@@ -162,9 +183,9 @@ podman::secret_showsecret() {
 # Prints podman::secret_create_from_file()'s usage message to stderr.
 podman::usage_secret_create_from_file() {
   cat <<USAGE >&2
-Usage: podman_secret_create_from_file [-l label]... [-h] src_files_nameref
+Usage: podman::secret_create_from_file [-l label]... [-h] src_files_nameref
 
-Creates a podman secret for each file path or glob in the src_files array. The secret
+Creates a podman secret from each file path in the src_files_nameref array. The secret
 name is the basename of the source file. Secrets that already exist are skipped with
 a warning — delete the secret manually to force recreation. Provenance labels and any
 caller-supplied extra labels are applied to each secret.
@@ -172,31 +193,37 @@ caller-supplied extra labels are applied to each secret.
 Options:
   -l label  Additional "key=value" label to apply to each created secret.
             May be specified multiple times.
-  -h        Print this usage message and exit.
+  -h        Print this usage message and return.
 
 Arguments:
-  src_files_nameref  Name of an array variable holding file paths or glob patterns
-                     to create secrets from.
+  src_files_nameref  Name of an array variable holding the file paths to create
+                     secrets from.
 USAGE
 }
 
 # podman::secret_create_from_file([-l label]... src_files_nameref)
 #
-# Creates a podman secret for each file path or glob in the src_files array.
-# The secret name is the basename of the source file. Secrets that already exist
-# are skipped with a warning — delete the secret manually to force recreation.
-# Provenance labels and any caller-supplied extra labels are applied to each secret.
+# Creates a podman secret from each file path in the array named by
+# <src_files_nameref>, named after the file's basename, with
+# `podman secret create --ignore`. Skips, with a warning, any file whose
+# secret already exists; delete the secret to recreate it. Applies
+# provenance labels (generating file, sourced file, function name and file
+# path) and any -l labels to each secret.
 #
+# Globals:
+#   None.
 # Arguments:
-#   -l label       Additional "key=value" label to apply to each created secret.
-#                  Repeatable; each value is passed as --label=<value>.
-#   src_files      Nameref name; array of file paths or glob patterns to create
-#                  secrets from. Each element is expanded and its basename becomes
-#                  the secret name.
+#   -l label   Additional "key=value" label to apply to each secret.
+#              Repeatable; each value is passed as --label=<value>.
+#   -h         Print usage and return 0.
+#   $1         Nameref: the name of an indexed array of file paths.
 # Outputs:
-#   Warns to stderr for each source file whose secret already exists.
+#   A warning for each file whose secret already exists, and
+#   `podman secret create`'s output. Usage text on -h or a bad option; an
+#   error and stack trace on a bad option, a missing operand, or a failed
+#   secret creation.
 # Returns:
-#   Non-zero on bad options, a missing operand, or a failed secret creation.
+#   0 on success or -h; 1 otherwise.
 podman::secret_create_from_file() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
@@ -213,27 +240,34 @@ podman::secret_create_from_file() {
         ;;
       :)
         podman::usage_secret_create_from_file
-        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED}" \
-          || return
+        log_error "${FUNCNAME[0]}(-${OPTARG}) operand is required."
+        return 1
         ;;
       ?)
         podman::usage_secret_create_from_file
-        core::fail "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}" || return
+        log_error "${FUNCNAME[0]}(-${OPTARG}) option is unknown."
+        return 1
         ;;
     esac
   done
   shift $((OPTIND - 1))
+  readonly extra_labels
+  log_debug "$(declare -p extra_labels)"
 
   core::require_operands 1 "$@" || return
-  local -n src_files="$1"
+  local -n src_files="${1}"
+  log_debug "$(declare -p src_files)"
 
   local secret_name f
   for f in "${src_files[@]}"; do
-    secret_name="$(basename "${f}")"
+    log_debug "Iterating over source file: ${f}"
 
-    if podman_secret_exists "${secret_name}"; then
-      log_warn "podman secret ${secret_name} already exists." \
-        "Delete this secret if you intend to update it."
+    secret_name="$(basename "${f}")"
+    readonly secret_name
+    log_debug "$(declare -p secret_name)"
+
+    if podman::secret_exists "${secret_name}"; then
+      log_warn "podman secret ${secret_name} already exists. Delete this secret if you intend to update it."
       continue
     fi
 
@@ -248,19 +282,19 @@ podman::secret_create_from_file() {
     for l in "${extra_labels[@]}"; do
       labels+=("--label=${l}")
     done
+    readonly labels
     log_debug "$(declare -p labels)"
 
-    podman secret \
+    if ! podman secret \
       create \
       --ignore \
       "${labels[@]}" \
       "${secret_name}" \
-      "${f}" \
-      || {
-        local msg="${FUNCNAME[0]}() failed to create podman secret"
-        msg+=": ${f}"
-        core::fail "${msg}" || return
-      }
+      "${f}"; then
+
+      log_error "${FUNCNAME[0]}($*) failed to create podman secret from source file: ${f}"
+      return 1
+    fi
   done
 }
 
@@ -275,12 +309,16 @@ podman::secret_create_from_file() {
 # on a target host to pre-populate the podman secret store without running
 # `podman secret create` on that host (e.g. via ignition file injection).
 #
+# Globals:
+#   None.
 # Arguments:
-#   (stdin)   Whitespace-separated list of podman secret names or IDs to include.
+#   None. Reads podman secret names or IDs from stdin, one per line.
 # Outputs:
-#   Writes a JSON object to stdout: { "<id>": "<secret_data>", ... }
+#   A JSON object on stdout: { "<id>": "<secret_data>", ... }. An error if
+#   stdin is a terminal or empty, or if a pipeline stage fails.
 # Returns:
-#   1 if stdin is a TTY (i.e. nothing was piped in).
+#   1 if stdin is a terminal or empty, or if `podman secret inspect` or jq
+#   fails; 0 otherwise.
 podman::secret_gen_file_secretsdata() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
@@ -288,7 +326,7 @@ podman::secret_gen_file_secretsdata() {
   input="$(cat)"
   readonly input
   if [[ -t 0 ]]; then
-    log_error "${__BASHKIT_CORE_ERROR_STDIN_NULL}"
+    log_error "${FUNCNAME[0]}() stdin cannot be null."
     return 1
   fi
 
@@ -297,7 +335,7 @@ podman::secret_gen_file_secretsdata() {
   }
 
   local -a secrets
-  mapfile secrets <<< "${input}"
+  mapfile -t secrets <<< "${input}"
   # PIPESTATUS is checked by core::require_pipestatus below.
   # shellcheck disable=SC2312
   podman secret inspect --showsecret "${secrets[@]}" \
@@ -306,34 +344,38 @@ podman::secret_gen_file_secretsdata() {
   core::require_pipestatus "${PIPESTATUS[@]}" || return
 }
 
-# podman::secret_filter_by_label(label value)
+# podman::secret_filter_by_label(label value names_out)
 #
-# Prints the names of all podman secrets carrying the given label key/value pair.
-# Inspects every existing secret and selects those whose Spec.Labels[label] equals
-# value. (`podman secret ls --filter` does not support label filtering, so the
-# match is performed with jq.)
+# Collects the names of every podman secret whose Spec.Labels[<label>]
+# equals <value> into the caller's array <names_out>. Inspects every
+# existing secret and matches with jq, because `podman secret ls --filter`
+# can't filter on labels.
 #
+# Globals:
+#   None.
 # Arguments:
-#   $1   Label key to filter on.
-#   $2   Expected label value.
+#   $1   The label key to filter on.
+#   $2   The label value to match.
+#   $3   Nameref: the name of the caller's array that receives the matching
+#        secret names.
 # Outputs:
-#   Writes matching podman secret names to stdout, newline-separated.
+#   An error and stack trace if <names_out> isn't a valid nameref, no
+#   secrets exist, the inspect or jq stage fails, or no secret matches.
 # Returns:
-#   1 if the jq filter fails to parse, or no secret matches.
+#   1 on any of the failures above; 0 otherwise.
 podman::secret_filter_by_label() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   core::require_operands 3 "$@" || return
   local -r label="${1}"
   local -r value="${2}"
+  core::require_nameref "${3}" || return
   local -n names_out="${3}"
-
-  core::require_nameref "${names_out}" || return
-  core::is_nameref_valid "${names_out}" || return
+  core::is_nameref_valid names_out || return
 
   local -a secret_ids=()
   readarray -t secret_ids < <(podman secret ls -q) || true
   readonly secret_ids
-  log_debug "$(declare -p secrets)"
+  log_debug "$(declare -p secret_ids)"
 
   (( "${#secret_ids[@]}" )) || {
     core::fail "No podman secret IDs could be found." || return
@@ -366,8 +408,3 @@ podman::secret_filter_by_label() {
     core::fail "${msg}" || return
   fi
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

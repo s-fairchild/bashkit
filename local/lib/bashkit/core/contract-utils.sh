@@ -1,13 +1,32 @@
 # shellcheck shell=bash
 #
 # Argument/operand validation and getopts helpers shared across bashkit and
-# its consumers: core::fail, core::require_operands, core::is_option_arg_dup,
-# and core::with_xtrace_suppressed. core::print_stack_trace lives in
-# logger-utils.sh, which this file sources, so it works before the logger is
-# loaded.
+# its consumers: core::fail, core::require_operands, core::require_pipestatus,
+# core::require_nameref, core::is_nameref_valid, core::is_option_arg_dup,
+# core::with_xtrace_suppressed, and core::is_valid_var_name.
+# core::print_stack_trace lives in logger-utils.sh, which this file sources,
+# so it works before the logger is loaded.
 
-readonly __BASHKIT_CORE_CONTRACT_UTILS_SOURCED="true"
+# shellcheck source=logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
 
+# core::fail([message...])
+#
+# Reports a failed check and returns 1, so the caller can write
+# `core::fail "<msg>" || return`. Passes "<caller>(): <message>" to
+# core::print_stack_trace, which writes it and the call stack as one block
+# at ERROR level. With no <message>, the first line is just "<caller>(): ".
+#
+# Globals:
+#   FUNCNAME
+# Arguments:
+#   $@   Optional. The error message; the operands are joined with spaces.
+#        Don't repeat the caller's name in it.
+# Outputs:
+#   The message and the stack trace, at ERROR level.
+# Returns:
+#   Always 1.
 core::fail() {
   # One call, so the error and its trace are written as a single block.
   core::print_stack_trace "${FUNCNAME[1]}(): $*"
@@ -80,16 +99,15 @@ core::require_operands() {
 #   1 if any stage exited non-zero; 0 otherwise.
 core::require_pipestatus() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
-
   core::require_operands 1 "$@" || return
 
   local -i i=0
   local status
   for status in "$@"; do
-    (( status == 0 )) || {
+    if (( status != 0 )); then
       core::fail "pipeline stage PIPESTATUS[${i}] exited ${status}: PIPESTATUS=($*)" \
         || return
-    }
+    fi
     (( ++i ))
   done
 }
@@ -101,6 +119,18 @@ core::require_pipestatus() {
 # or "-" for scalar), requires the target to already be declared with that
 # type. Cannot detect shadowing by the caller's own locals -- prefix
 # nameref/local names in ref-taking functions to avoid that.
+#
+# Globals:
+#   None.
+# Arguments:
+#   $1   The variable name to validate.
+#   $2   Optional. The type the variable must already be declared with: "a"
+#        (indexed array), "A" (associative array) or "-" (scalar).
+# Outputs:
+#   An error and stack trace if a check fails.
+# Returns:
+#   1 if <name> isn't a valid identifier, or <expected_type> is given and
+#   <name> is undeclared or has another type; 0 otherwise.
 core::require_nameref() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   core::require_operands 1 "$@" || return
@@ -121,6 +151,19 @@ core::require_nameref() {
   }
 }
 
+# core::is_nameref_valid(name)
+#
+# Checks that <name> is a nameref, i.e. was declared with `local -n` or
+# `declare -n`.
+#
+# Globals:
+#   None.
+# Arguments:
+#   $1   The variable name to check.
+# Outputs:
+#   An error and stack trace if <name> isn't a nameref.
+# Returns:
+#   1 if <name> isn't a nameref; 0 otherwise.
 core::is_nameref_valid() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   core::require_operands 1 "$@" || return
@@ -136,30 +179,29 @@ core::is_nameref_valid() {
 # Rejects a repeated single-value getopts flag. Call it from a
 # `case "$opt" in ...)` arm *before* assigning `OPTARG`, passing the target
 # variable's current (pre-assignment) value as <current_value> -- a
-# non-empty value there means the flag was already seen once. If so, logs
-# "-<opt> <current_value> <__BASHKIT_CORE_ERROR_OPTION_ARG_DUP>" and returns
-# 1; otherwise it does nothing.
+# non-empty value there means the flag was already seen once. If so, fails
+# with "-<opt> <current_value> option can only be specified once." (see
+# core::fail); otherwise it does nothing.
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_OPTION_ARG_DUP
+#   None.
 # Arguments:
 #   $1   The option letter/flag being parsed.
 #   $2   The target variable's current value, prior to this OPTARG
 #        assignment.
 # Outputs:
-#   An error if the flag is a duplicate.
+#   An error and stack trace if the flag is a duplicate.
 # Returns:
 #   1 if the flag is a duplicate; 0 otherwise.
 core::is_option_arg_dup() {
   log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
 
   core::require_operands 2 "$@" || return
-  local -r opt="$1"
-  local -r opt_arg="$2"
+  local -r opt="${1}"
+  local -r opt_arg="${2}"
 
   if [[ -n "${opt_arg}" ]]; then
-    core::fail "-${opt} ${opt_arg} ${__BASHKIT_CORE_ERROR_OPTION_ARG_DUP}" \
-      || return
+    core::fail "-${opt} ${opt_arg} option can only be specified once." || return
   fi
 }
 
@@ -177,7 +219,7 @@ core::is_option_arg_dup() {
 #          call more than once against the same <state_var>.
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_OPTION_UNKNOWN
+#   None.
 # Arguments:
 #   $1   Mode: "save" or "restore".
 #   $2   Name of the caller's state variable (passed by reference).
@@ -210,18 +252,24 @@ core::with_xtrace_suppressed() {
       fi
       ;;
     *)
-      core::fail "${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}: ${mode}" || return
+      core::fail "${FUNCNAME[0]}(-${OPTARG}) option is unknown. mode: ${mode}" || return
       ;;
   esac
 }
 
+# core::is_valid_var_name(name)
+#
+# Tests whether <name> is a valid bash variable name: a letter or
+# underscore, followed by letters, digits and underscores.
+#
+# Globals:
+#   None.
+# Arguments:
+#   $1   The name to test.
+# Outputs:
+#   None.
+# Returns:
+#   0 if <name> is valid; 1 otherwise.
 core::is_valid_var_name() {
   [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]
 }
-
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=logger-utils.sh
-  . "${BASH_SOURCE[0]%/*}/logger-utils.sh"
-fi
-
-core::logger_init --name "$(basename "$0")"

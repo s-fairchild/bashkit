@@ -4,11 +4,16 @@
 # graphroot volume mounted so the nested podman shares its storage.
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_PODMAN_CONTAINER_SOURCED="true"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
-readonly __BASHKIT_LIB_PODMAN_CONTAINER_USER="podman"
-readonly __BASHKIT_LIB_PODMAN_CONTAINER_VOLUME_GRAPHROOT_USER_PODMAN="graphroot-user-podman"
-readonly __BASHKIT_LIB_PODMAN_CONTAINER_VOLUME_TARGET_GRAPHROOT_USER_PODMAN="/home/podman/.local/share/containers/storage"
+[[ -v __BASHKIT_LIB_PODMAN_CONTAINER_USER ]] \
+  || readonly __BASHKIT_LIB_PODMAN_CONTAINER_USER="podman"
+[[ -v __BASHKIT_LIB_PODMAN_CONTAINER_VOLUME_GRAPHROOT_USER_PODMAN ]] \
+  || readonly __BASHKIT_LIB_PODMAN_CONTAINER_VOLUME_GRAPHROOT_USER_PODMAN="graphroot-user-podman"
+[[ -v __BASHKIT_LIB_PODMAN_CONTAINER_VOLUME_TARGET_GRAPHROOT_USER_PODMAN ]] \
+  || readonly __BASHKIT_LIB_PODMAN_CONTAINER_VOLUME_TARGET_GRAPHROOT_USER_PODMAN="/home/podman/.local/share/containers/storage"
 
 # podman::container(args...)
 #
@@ -44,8 +49,3 @@ podman::container() {
     podman \
     "$@"
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

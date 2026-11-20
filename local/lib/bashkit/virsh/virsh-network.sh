@@ -2,15 +2,19 @@
 #
 # Thin, operand-validated wrappers around `virsh` network subcommands.
 
-readonly __BASHKIT_VIRSH_NETWORK_SOURCED="true"
+# shellcheck source=../core/boolean-utils.sh
+. /dev/null
+import core/boolean-utils.sh
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
 
-#####################
-### Globals Start ###
-#####################
-
-readonly __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE="Active"
-readonly __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT="Persistent"
-readonly __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART="Autostart"
+[[ -v __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE ]] \
+  || readonly __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE="Active"
+[[ -v __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT ]] \
+  || readonly __BASHKIT_VIRSH_NETWORK_KEY_PERSISTENT="Persistent"
+[[ -v __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART ]] \
+  || readonly __BASHKIT_VIRSH_NETWORK_KEY_AUTOSTART="Autostart"
 
 # virsh::net_define(name [description])
 #
@@ -235,13 +239,3 @@ virsh::net_parse_info() {
   core::require_pipestatus "${status[@]:0:4}" || return
   return "${status[4]}"
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi
-
-if [[ "${__BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/boolean-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/boolean-utils.sh"
-fi

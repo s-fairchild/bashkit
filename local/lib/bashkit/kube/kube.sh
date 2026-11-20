@@ -1,13 +1,9 @@
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_KUBE_SOURCED="true"
+# shellcheck source=kubectl.sh
+. /dev/null
+import kube/kubectl.sh
 
-if [[ "${__BASHKIT_LIB_KUBE_KUBECTL_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=kubectl.sh
-  . "${BASH_SOURCE[0]%/*}/kubectl.sh"
-fi
-
-if [[ "${__BASHKIT_LIB_KUBE_KUSTOMIZE_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=kustomize.sh
-  . "${BASH_SOURCE[0]%/*}/kustomize.sh"
-fi
+# shellcheck source=kustomize.sh
+. /dev/null
+import kube/kustomize.sh

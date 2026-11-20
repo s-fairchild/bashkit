@@ -45,7 +45,7 @@ Executables in `local/bin/` share their name with the binary they wrap.
 
 Library files are named `<topic>-utils.sh` or `<dir>-<topic>.sh`. A library
 directory may also have an **umbrella file** named after the directory
-(`core/core.sh`, `virsh/virsh.sh`, …). It only sources every leaf file in
+(`core/core.sh`, `virsh/virsh.sh`, …). It only imports every leaf file in
 that directory. Umbrella files are optional: `array/` and `os/` have none,
 because a script that sources `os/bk-bootstrap.sh` imports a leaf file or a
 whole directory by name.
@@ -83,86 +83,123 @@ paths come from before the code was moved here, and they go stale.
 Every file uses this order:
 
 1. First line (§1.2) and header comment (§1.3).
-2. Libraries only: the xtrace hook, `[[ "${XTRACE:-0}" -eq 1 ]] && set -x`.
-   `local/bin/*` wrappers check `XTRACE` inside the entry-point guard
-   instead (§6.1).
-3. The double-inclusion guard (§2.1).
-4. Module constants (§3.2). An optional `### Globals Start ###` /
-   `### Globals End ###` banner can wrap them.
-5. Function definitions.
-6. The dependency-sourcing block (§2.2).
-7. `local/bin/*` only: the entry-point guard (§6.1).
+2. Libraries only: the dependency imports (§2.2).
+3. Module constants, each defined only if it isn't already (§2.1, §3.2).
+   An optional `### Globals Start ###` / `### Globals End ###` banner can
+   wrap them.
+4. Function definitions.
+5. `local/bin/*` only: the bootstrap for when the wrapper runs as a script,
+   the dependency imports, and the entry-point guard (§6.1).
 
-Libraries run no other top-level code.
+Libraries run no other top-level code (§2.1). They have no xtrace hook: the
+calling script turns xtrace on, and `local/bin/*` wrappers check `XTRACE`
+inside the entry-point guard (§6.1).
 
 ---
 
 ## 2. Sourcing
 
-### 2.1 Double-inclusion guards — *Addition*
+### 2.1 Sourcing a file again changes nothing — *Addition*
 
-Every sourced file declares a read-only guard variable near the top:
+Every library file and wrapper can be sourced any number of times. Each
+source after the first changes nothing: no variable gets a new value, no
+function gets a new body, and nothing fails. Nothing checks whether a file
+was loaded already, so there are no `__..._SOURCED` guard variables. Don't
+add one.
 
-```bash
-readonly __BASHKIT_LIB_<DIR>_<FILE>_SOURCED="true"   # local/lib/bashkit/<dir>/<file>.sh
-readonly __BASHKIT_LIB_<DIR>_SOURCED="true"          # umbrella file <dir>/<dir>.sh
-readonly __BASHKIT_BIN_<NAME>_SOURCED="true"         # local/bin/<name>
-```
+That holds as long as a file's top level does only these things:
 
-`<DIR>`, `<FILE>`, and `<NAME>` are the path parts in uppercase, with
-hyphens turned into underscores (for example,
-`__BASHKIT_CORE_CONTRACT_UTILS_SOURCED`).
+- Imports its dependencies (§2.2). `import` loads each file once.
+- Defines functions. Defining one again leaves it as it was.
+- Defines constants, each only if it isn't defined yet:
 
-Consuming repos check these names. **Never rename a guard** unless you update
-every consumer at the same time.
+  ```bash
+  [[ -v __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE ]] \
+    || readonly __BASHKIT_VIRSH_NETWORK_KEY_ACTIVE="Active"
+  ```
 
-### 2.2 Sourcing dependencies — *Addition*
-
-- Source each dependency behind its guard.
-  - Never assume a caller already loaded it:
+  - A plain `readonly` fails the second time, because the variable is
+    read-only by then.
+  - Test an array with `declare -p`, because `[[ -v ]]` is false for an
+    empty one. Declare it with `-g` (§3.2):
 
     ```bash
-    if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-      # shellcheck source=../core/contract-utils.sh
-      . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
+    if ! declare -p __empty_array >/dev/null 2>&1; then
+      declare -gar __empty_array=()
     fi
     ```
 
-- Paths inside this repo are relative to the sourcing file, through
-  `${BASH_SOURCE[0]%/*}`.
-  - Never make them relative to the caller's CWD or a repo root.
-- Prefer `.` over `source`.
+  - A constant that takes more than one statement to build goes in an
+    `if [[ ! -v <name> ]]; then ... fi` block (see `core/boolean-utils.sh`).
+
+Anything else at the top level is a side effect that each source repeats:
+initializing the logger, `set` or `shopt`, a trap, writing a file, or
+appending to an array. Put it in a function the caller runs, or in a
+wrapper's entry-point guard (§6.1).
+
+`test/lib/sourcing-test.sh` checks this rule for every file.
+
+The one exception is `os/bk-bootstrap.sh`, which keeps its own guard. It
+records which files were imported, and running it again would empty that
+record.
+
+### 2.2 Importing dependencies — *Addition*
+
+- A script sources `os/bk-bootstrap.sh` first and loads bashkit with
+  `import` after that.
+  - A library never sources the bootstrap. The entry point does: a
+    consumer's script, or a wrapper that runs as a script (§6.1).
+  - Without the bootstrap, `import` is not defined, and bash runs
+    ImageMagick's `import(1)` instead if it is installed. That waits for a
+    mouse click.
+- Every library imports each of its dependencies itself, at the top of the
+  file. Never assume a caller already loaded one. Importing a file that is
+  already loaded does nothing.
+  - Name a library file by its path under `local/lib/bashkit/`, whichever
+    file imports it: `import core/contract-utils.sh`.
+  - Name a wrapper relative to the importing file: `import ../../../bin/yq`
+    from `core/`.
+- ShellCheck can't follow `import`. Put a `# shellcheck source=` directive,
+  relative to the importing file, on a `. /dev/null` line right above each
+  import:
+
+  ```bash
+  # shellcheck source=../core/contract-utils.sh
+  . /dev/null
+  import core/contract-utils.sh
+  ```
+
+  - `. /dev/null` does nothing. It is only there for the directive.
+- If two files import each other, point the directive on one side at
+  `/dev/null`, with a comment saying why. Linted from another directory,
+  ShellCheck doesn't recognize the cycle as recursion. It follows it 100
+  levels deep and runs out of memory. The only cycle today is
+  `core/boolean-utils.sh` <-> `core/logger-utils.sh`, and the directive in
+  `boolean-utils.sh` is the one pointed at `/dev/null`.
+- Outside the imports, prefer `.` over `source`, for example for the
+  bootstrap itself.
   - In bash they are the same builtin and behave identically; `.` is just
     the POSIX spelling and matches the existing code.
   - `source` is not wrong and isn't a review blocker.
+  - Once the bootstrap is loaded, both are aliases for `os::import_one` in
+    every file parsed afterwards (see its header).
 - A `.`/`source` line whose path isn't static needs a
   `# shellcheck source=<relative path>` directive right above it.
   - Without one, ShellCheck can't follow the file and reports
     [SC1090](https://www.shellcheck.net/wiki/SC1090).
-  - Every in-repo path starts with `${BASH_SOURCE[0]%/*}/` (see above), so
-    in practice nearly every sourcing line needs the directive.
-  - A fully static path doesn't need one, but those should be rare here.
-- If two files source each other, point the directive on one side at
-  `/dev/null` (with a comment saying why), so ShellCheck doesn't follow the
-  cycle; following one can take 20s or more per file. The only cycle today is
-  `core/boolean-utils.sh` -> `core/logger-utils.sh`.
 - The logging library (`bash-logger`) lives outside this repo.
-  - A file that uses any `core::*` contract helper (`core::fail`,
-    `core::require_*`, …) sources `core/contract-utils.sh` and does **not**
-    load `bash-logger` itself. `contract-utils.sh` loads the logger.
-  - Only a file with no `core::` dependency loads the logger itself. It does
-    so through `core/logger-utils.sh`, never by sourcing `logging.sh` by
-    path:
+  - Sourcing a library never loads or initializes it (§2.1). The entry
+    point calls `core::logger_init` once, after its imports.
+    `core/contract-utils.sh` imports `core/logger-utils.sh`, which defines
+    it:
 
     ```bash
-    if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-      # shellcheck source=../core/logger-utils.sh
-      . "${BASH_SOURCE[0]%/*}/../core/logger-utils.sh"
-    fi
-
+    . "<bashkit>/local/lib/bashkit/os/bk-bootstrap.sh"
+    import core/contract-utils
     core::logger_init --name "$(basename "$0")"
     ```
 
+  - Never source `logging.sh` by path. `core::logger_init` finds it.
   - `core::logger_init` does nothing if `init_logger` is already defined.
     Otherwise it sources the first `logging.sh` it finds in
     `vendor/bash-logger/`, a `bash-logger/` beside bashkit,
@@ -221,14 +258,20 @@ their consumers:
 
 - Module-private constants start with `__BASHKIT_` plus the module.
   - For example, `__BASHKIT_VIRSH_NETWORK_KEY_ACTIVE`.
-- Declare them with `readonly`, or `declare -r` inside a function.
+- At a file's top level, declare them with `readonly`, and only if they
+  aren't defined yet (§2.1). Inside a function, use `local -r`.
+  - Never use a plain `declare` at the top level. `import` sources files
+    from inside a function, where `declare` makes a local variable that is
+    gone once the file has loaded. Use `declare -g` when you need one of
+    `declare`'s options, such as `-a`.
 - Don't define new unprefixed globals.
   - The `LOG_LEVEL_*` names come from the external logging library, and
     bashkit only reads them.
-  - bash-logger does **not** define `ERROR_*` or `BOOLEAN_*`. Use bashkit's
-    own `__BASHKIT_CORE_ERROR_*` (`core/logger-utils.sh`) and
-    `__BASHKIT_CORE_BOOLEAN_*` (`core/boolean-utils.sh`) constants; an
-    unprefixed `${ERROR_...}` expands to nothing (or fails under `set -u`).
+  - Neither bash-logger nor bashkit defines `ERROR_*` message constants.
+    Write the message out (§4.4). An `${ERROR_...}` expands to nothing, or
+    fails under `set -u`.
+  - The boolean spellings are `__BASHKIT_CORE_BOOLEAN_*`
+    (`core/boolean-utils.sh`).
 - User-facing tunables are unprefixed environment variables that are read
   only.
   - For example, `XTRACE` and `PODMAN_LOG_LEVEL`.
@@ -262,13 +305,13 @@ bashkit:
 # non-empty value there means the flag was already seen once.
 #
 # Globals:
-#   __BASHKIT_CORE_ERROR_OPTION_ARG_DUP
+#   None.
 # Arguments:
 #   $1   The option letter/flag being parsed.
 #   $2   The target variable's current value, prior to this OPTARG
 #        assignment.
 # Outputs:
-#   An error if the flag is a duplicate.
+#   An error and stack trace if the flag is a duplicate.
 # Returns:
 #   1 if the flag is a duplicate; 0 otherwise.
 core::is_option_arg_dup() {
@@ -313,6 +356,11 @@ Leave a blank line after it. Three cases need something different:
 - In `local/bin/*` wrappers, wrap the line in
   `if declare -f log_debug >/dev/null 2>&1; then ... fi`.
   - Wrappers may run without the logger loaded.
+- In `core/logger-utils.sh` and `core/boolean-utils.sh`, which run before the
+  logger may be loaded, call `core::_log_entry_debug` with the same message
+  instead. It uses `log_debug` once the logger is loaded, and before that
+  writes to stderr when `BASHKIT_VERBOSE` or `BASHKIT_LEVEL` asks for debug
+  output.
 
 ### 4.3 Operand validation — *Addition*
 
@@ -346,8 +394,8 @@ while getopts ':l:h' opt; do
   case "${opt}" in
     h) <ns>::usage_<fn>; return 0 ;;
     l) labels+=("${OPTARG}") ;;
-    :) <ns>::usage_<fn>; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_ARG_REQUIRED}"; return 1 ;;
-    ?) <ns>::usage_<fn>; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; return 1 ;;
+    :) <ns>::usage_<fn>; log_error "${FUNCNAME[0]}(-${OPTARG}) operand is required."; return 1 ;;
+    ?) <ns>::usage_<fn>; log_error "${FUNCNAME[0]}(-${OPTARG}) option is unknown."; return 1 ;;
   esac
 done
 shift $((OPTIND - 1))
@@ -383,14 +431,14 @@ that can't be recovered from. For bad input or a failed command, call
     `echo ... >&2` or `core::logger_resolve`, then
     `core::print_stack_trace`, and returns its own status instead.
     - `core::print_stack_trace` lives in `logger-utils.sh` for this reason.
-      That file sources only `boolean-utils.sh`, and `boolean-utils.sh`
-      sources only `logger-utils.sh`. Neither may source anything else,
+      That file imports only `boolean-utils.sh`, and `boolean-utils.sh`
+      imports only `logger-utils.sh`. Neither may import anything else,
       including `contract-utils.sh`.
   - Exception: getopts error arms (§4.4), which print usage and don't need a
     stack trace.
 
-The one place `exit` is allowed is the `-h` branch of a `local/bin/*` wrapper
-that runs as a script.
+There is no exception for `-h`: a wrapper's entry function returns from its
+`-h` branch too, because scripts that source the wrapper call it.
 
 ### 4.6 Surviving the caller's shell options — *Addition*
 
@@ -522,9 +570,20 @@ Google: a script with any functions puts its logic in `main` and ends with
 
 bashkit wrappers can be run directly **or** sourced as a library (see
 `core/bin-utils.sh`). So each wrapper defines a single namespaced entry
-function and ends with this guard:
+function and ends like this:
 
 ```bash
+# Run as a script, nothing has loaded the bootstrap yet, and the files below
+# need its `import`. Sourced, the caller has loaded it already.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # shellcheck source=../lib/bashkit/os/bk-bootstrap.sh
+  . "${BASH_SOURCE[0]%/*}/../lib/bashkit/os/bk-bootstrap.sh"
+fi
+
+# shellcheck source=../lib/bashkit/core/logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   if core::bool_is_valid "${XTRACE:-}" \
     && core::bool_is_true "${XTRACE}"; then
@@ -536,17 +595,21 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 ```
 
+Run as a script, a wrapper is its own entry point, so it sources the
+bootstrap before its imports (§2.2). Sourced, it relies on the caller to
+have done that.
+
 Sourcing a wrapper must never have side effects beyond defining functions
-and constants. That's why the xtrace check and `core::logger_init` go inside
-the guard:
+and constants (§2.1). That's why the xtrace check and `core::logger_init` go
+inside the second guard:
 
 - The first `core::logger_init` call configures the logger and every later
   call does nothing, so a wrapper that initialized it at source time would
   name the logger after itself and override the calling script's settings.
 - A sourced wrapper doesn't turn on xtrace for the whole calling script.
 
-An entry script that sources wrappers calls `core::logger_init` itself
-before sourcing them.
+An entry script that sources wrappers loads the bootstrap and calls
+`core::logger_init` itself before sourcing them.
 
 ---
 
@@ -581,12 +644,8 @@ Google doesn't cover ShellCheck directives. In bashkit:
   `core::bool_is_valid`. Never test one with `(( ))` or `-eq`: arithmetic
   evaluation treats a word as a variable name (so `true` is 0) and runs any
   `$(...)` inside an array subscript.
-  - The §1.4 library xtrace hook (`-eq 1`) is the one existing exception:
-    it runs before anything is sourced, so it can't call anything, and
-    `XTRACE` is documented as `1`. `XTRACE=true` does nothing there.
-    `local/bin/*` wrappers run their check after sourcing (§6.1), so they
-    use `core::bool_is_valid` and `core::bool_is_true`. An invalid value is
-    ignored rather than an error.
+  - `local/bin/*` wrappers test `XTRACE` this way, after their imports
+    (§6.1). An invalid value is ignored rather than an error.
 - Use `local -n` namerefs to pass arrays by name.
   - Document the parameter as a nameref in the function comment.
   - Validate the name with `core::require_nameref <name> [a|A|-]` before
@@ -693,20 +752,15 @@ another reason. Don't copy their patterns.
 
 | File | Deviation | Rule |
 | --- | --- | --- |
-| `podman/podman-{build,container,secret,volume}.sh` | Stale `# hack/lib/...` path header before the ShellCheck line | §1.2, §1.3 |
+| `podman/podman-{build,container,volume}.sh` | Stale `# hack/lib/...` path header before the ShellCheck line | §1.2, §1.3 |
 | `ignition/{butane,ignition-validate,serve}.sh` | Header comment comes before `# shellcheck shell=bash` | §1.2 |
 | `local/bin/envsubst` | `# shellcheck shell=bash` instead of a shebang | §1.2 |
-| `local/bin/{coreos-installer,envsubst}` | Source `contract-utils.sh`, which calls `core::logger_init` on load, so sourcing them still initializes the logger | §6.1 |
-| `podman/podman.sh` | Guard is `__LIB_PODMAN_SOURCED`, missing the `__BASHKIT_` prefix | §2.1 |
-| `core/bin-utils.sh`, `core/yq-utils.sh`, `k3s/token-utils.sh`, `kube/{kube,kubectl,kustomize}.sh` | No file header comment | §1.3 |
-| `core/yq-utils.sh` | No xtrace hook | §1.4 |
-| `podman/podman-secret.sh` | `${1?...}` operand checks | §4.3 |
-| `openssl/cert-utils.sh`, `podman/podman-secret.sh` | `local -r x="$(...)"` | Google (declare and assign separately) |
+| `core/bin-utils.sh`, `core/yq-utils.sh`, `k3s/token-utils.sh`, `kube/kube.sh` | No file header comment | §1.3 |
+| `podman/podman-build.sh` | Unprefixed constants (`ARGFILE_CONF`, `PODMAN_BUILD_*`) | §3.2 |
+| `openssl/cert-utils.sh` | `local -r x="$(...)"` | Google (declare and assign separately) |
 | `k3s/token-utils.sh` | `which`; function comment names don't match the functions (`k3s_gen_token*`) | §8, §4.1 |
 | Several files | Function comments missing `Globals:` or other sections | §4.1 |
-| `virsh/virsh-network.sh` | Dependency sourcing at the top of the file | §1.4 |
 | `virsh/virsh-network.sh` (`virsh::net_define`) | Writes the network XML to a `mktemp` file with no stated reason. `virsh net-define <(printf ...)` may work instead; test it before changing | §4.7 |
 | `core/sha512sum-utils.sh` | Function comments list arguments as `*) input - ...` instead of `$@` | §4.1 |
-| `core/contract-utils.sh` (`core::fail`, `core::require_nameref`, `core::is_valid_var_name`) | Missing or partial function comments; no entry logging | §4.1, §4.2 |
-| `kube/kubectl.sh` | `#######` banner comments; `log_error` + `return 1` and `core::fail ...; return` instead of `core::fail ... \|\| return` | §4.1, §4.5 |
-| `kube/kustomize.sh` | No function comments; unquoted `${cmd[@]}` behind `disable=SC2068` with no reason | §4.1, §7.1 |
+| `core/contract-utils.sh` (`core::fail`, `core::is_valid_var_name`) | No entry logging | §4.2 |
+| `kube/kubectl.sh` | `log_error` followed by a bare `core::fail` instead of `core::fail "<msg>"`; `core::fail ...; return` instead of `core::fail ... \|\| return` | §4.5 |

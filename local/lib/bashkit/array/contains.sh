@@ -33,6 +33,5 @@ array::contains() {
     [[ "${item}" == "${element}" ]] && return 0
   done
 
-  # TODO add test for empty $@, print error message specifically for this if so.
   return 1
 }

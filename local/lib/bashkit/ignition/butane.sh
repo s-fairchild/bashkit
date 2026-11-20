@@ -2,8 +2,12 @@
 #
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_IGNITION_BUTANE_SOURCED="true"
-readonly __BASHKIT_LIB_BUTANE_CONTAINER_WORKDIR="/data"
+# shellcheck source=../core/contract-utils.sh
+. /dev/null
+import core/contract-utils.sh
+
+[[ -v __BASHKIT_LIB_BUTANE_CONTAINER_WORKDIR ]] \
+  || readonly __BASHKIT_LIB_BUTANE_CONTAINER_WORKDIR="/data"
 
 ignition::usage_butane() {
   cat <<USAGE >&2
@@ -61,8 +65,14 @@ ignition::butane() {
         readonly workdir_mount_src="${OPTARG}"
         ;;
       h) ignition::usage_butane; return 0; ;;
-      :) ignition::usage_butane; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; return 1 ;;
-      ?) ignition::usage_butane; log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_UNKNOWN}"; return 1 ;;
+      :)
+        ignition::usage_butane
+        core::fail "$(basename "${0}") -${OPTARG} operand is required." || return
+        ;;
+      ?)
+        ignition::usage_butane
+        core::fail "$(basename "${0}") -${OPTARG} option is unknown." || return
+        ;;
     esac
   done
   shift $((OPTIND - 1))
@@ -105,8 +115,3 @@ ignition::butane() {
     "${image}" \
     "$@"
 }
-
-if [[ "${__BASHKIT_CORE_CONTRACT_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/contract-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/contract-utils.sh"
-fi

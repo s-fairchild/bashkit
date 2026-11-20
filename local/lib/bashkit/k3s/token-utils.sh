@@ -1,6 +1,8 @@
 # shellcheck shell=bash
 
-readonly __BASHKIT_LIB_K3S_TOKEN_UTILS_SOURCED="true"
+# shellcheck source=../core/logger-utils.sh
+. /dev/null
+import core/logger-utils.sh
 
 # k3s_gen_token_openssl()
 #
@@ -73,10 +75,3 @@ k3s::token_gen() {
     }
   fi
 }
-
-if [[ "${__BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED:-}" != "true" ]]; then
-  # shellcheck source=../core/logger-utils.sh
-  . "${BASH_SOURCE[0]%/*}/../core/logger-utils.sh"
-fi
-
-core::logger_init --name "$(basename "$0")"
