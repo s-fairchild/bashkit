@@ -153,7 +153,7 @@ local/
       contract-utils.sh          # core::fail, core::require_{operands,pipestatus,nameref},
                                   # core::is_option_arg_dup, core::with_xtrace_suppressed
       logger-utils.sh            # core::logger_{init,resolve}, core::print_stack_trace,
-                                  # __BASHKIT_CORE_ERROR_* constants
+                                  # core::_log_entry_debug, __BASHKIT_CORE_ERROR_* constants
       file-utils.sh               # core::file_read_builtin, core::file_read_preserve_newlines,
                                   # core::file_parse_extension
       sha512sum-utils.sh          # core::sha512sum wrapper + core::checksum_parse_hash

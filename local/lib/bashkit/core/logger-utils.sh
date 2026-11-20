@@ -3,9 +3,9 @@
 # Locates, sources, and initializes the external bash-logger library
 # (bash-logger/logging.sh) for bashkit libraries and wrappers through
 # core::logger_init, using the private helpers core::_logger_source and
-# core::_logger_config_path. Also holds core::logger_resolve and
-# core::print_stack_trace, which must work before the logger is loaded, and
-# the __BASHKIT_CORE_ERROR_* message constants.
+# core::_logger_config_path. Also holds core::logger_resolve,
+# core::print_stack_trace, and core::_log_entry_debug, which must work before
+# the logger is loaded, and the __BASHKIT_CORE_ERROR_* message constants.
 #
 # Everything here may run before the logger exists, so errors go to stderr
 # via `echo` rather than the logging API. The only dependency is
@@ -37,36 +37,6 @@ readonly __BASHKIT_CORE_ERROR_STRING_EMPTY="string cannot be empty"
 readonly __BASHKIT_CORE_ERROR_STDIN_NULL="stdin cannot be null"
 readonly __BASHKIT_CORE_ERROR_REGEX_FAIL="failed regex match"
 
-# Where core::_logger_source looks for logging.sh, highest priority first.
-# The first two are relative to this file
-# (<bashkit>/local/lib/bashkit/core/).
-readonly -a __BASHKIT_CORE_LOGGER_PATHS=(
-  # bashkit's own submodule: <bashkit>/vendor/bash-logger/
-  "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
-  # A copy vendored beside bashkit: <bashkit>/../bash-logger/ (e.g. forge's
-  # hack/vendor/bash-logger/ next to hack/vendor/bashkit/)
-  "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
-  "${HOME:-}/.local/lib/bash-logger/logging.sh"
-  "/usr/local/lib/bash-logger/logging.sh"
-  "/usr/lib/bash-logger/logging.sh"
-)
-
-# Where core::_logger_config_path looks for config files, highest priority
-# first, after BASHKIT_LOG_CONFIG_DIR. The first two are relative to this
-# file (<bashkit>/local/lib/bashkit/core/), so a checkout or vendored copy
-# uses its own configs. Installed copies have neither and fall through to
-# the user and system directories.
-readonly -a __BASHKIT_CORE_LOGGER_CONFIG_DIRS=(
-  # bashkit's own configs: <bashkit>/.bashkit/
-  "${BASH_SOURCE[0]%/*}/../../../../.bashkit"
-  # A consumer's configs two levels above bashkit: <bashkit>/../../etc/bashkit/
-  # (e.g. forge's hack/etc/bashkit/ for hack/vendor/bashkit/)
-  "${BASH_SOURCE[0]%/*}/../../../../../../etc/bashkit"
-  "${XDG_CONFIG_HOME:-${HOME:-}/.config}/bashkit"
-  "/usr/local/etc/bashkit"
-  "/etc/bashkit"
-)
-
 # core::_echo_stderr(message...)
 #
 # The fallback core::logger_resolve returns when bash-logger isn't loaded.
@@ -83,42 +53,100 @@ core::_echo_stderr() {
   echo "$*" >&2
 }
 
-# core::logger_resolve([level])
+# core::_log_entry_debug(message...)
 #
-# Prints the command to log a message at <level>: `log_<level>` if
-# bash-logger has defined it, otherwise core::_echo_stderr. Pass the command
-# a single message string, since bash-logger's log_* functions print only
-# their first operand. Either way the line goes to stderr: the fallback
-# writes there itself, and core::logger_init sets `--stderr-level DEBUG`:
+# Private. The entry log line (docs/STYLEGUIDE.md §4.2) for the functions in
+# this file and boolean-utils.sh, which may run before bash-logger is
+# loaded. Logs <message> with log_debug once the logger is loaded. Before
+# that, writes it to stderr if the environment asks for debug output:
+# BASHKIT_VERBOSE is true, or BASHKIT_LEVEL is debug and BASHKIT_QUIET isn't
+# true.
 #
-#   local logger
-#   logger="$(core::logger_resolve error)"
-#   "${logger}" "message"
+# It matches the boolean regexes itself rather than calling
+# core::bool_is_true, which logs its own entry line through this function.
+#
+# Globals:
+#   BASHKIT_VERBOSE, BASHKIT_QUIET, BASHKIT_LEVEL   Optional; see
+#                                                   core::logger_init.
+#   __BASHKIT_CORE_BOOLEAN_TRUE_REGEX, __BASHKIT_CORE_BOOLEAN_FALSE_REGEX
+# Arguments:
+#   $@   The message; the operands are joined with spaces.
+# Outputs:
+#   The message to stderr, if it is logged.
+# Returns:
+#   Always 0.
+core::_log_entry_debug() {
+  local -r msg="${*:-}"
+  local -r level="${BASHKIT_LEVEL:-}"
+  local -r quiet="${BASHKIT_QUIET:-${__BASHKIT_CORE_BOOLEAN_FALSE}}"
+  local -r verbose="${BASHKIT_VERBOSE:-${__BASHKIT_CORE_BOOLEAN_FALSE}}"
+
+  # 1>&2: callers such as core::logger_resolve return their result on stdout.
+  if declare -f log_debug >/dev/null 2>&1; then
+    log_debug "${msg}" 1>&2
+  elif [[ "${level,,}" == "debug" \
+    && "${quiet,,}" =~ ${__BASHKIT_CORE_BOOLEAN_FALSE_REGEX} ]] \
+    || [[ "${verbose,,}" =~ ${__BASHKIT_CORE_BOOLEAN_TRUE_REGEX} ]]; then
+    echo "${msg}" 1>&2
+  fi
+
+  return 0
+}
+
+# core::_sensitive_noop(message...)
+#
+# Private. The command core::logger_resolve returns for the `sensitive`
+# level while bash-logger isn't loaded. Sensitive values must never reach
+# the console through the stderr fallback, so it discards the message.
 #
 # Globals:
 #   None.
 # Arguments:
-#   $1   Optional. The bash-logger level, e.g. debug, info, warn, error.
-#        Defaults to info.
+#   $@   The message, which is discarded.
+# Outputs:
+#   None.
+# Returns:
+#   Always 0.
+core::_sensitive_noop() { return 0; }
+
+# core::logger_resolve([level])
+#
+# Prints the command to log a message at <level>: `log_<level>` if
+# bash-logger has defined it, otherwise core::_echo_stderr, or
+# core::_sensitive_noop for the `sensitive` level, so that a sensitive value
+# isn't printed while the logger isn't loaded. Pass the command a single
+# message string, since bash-logger's log_* functions print only their first
+# operand. Either way the line goes to stderr: the fallback writes there
+# itself, and core::logger_init sets `--stderr-level DEBUG`:
+#
+#   local _log_entry_error
+#   _log_entry_error="$(core::logger_resolve error)"
+#   "${_log_entry_error}" "message"
+#
+# Globals:
+#   None.
+# Arguments:
+#   $1   Optional. The bash-logger level, e.g. debug, info, warn, error,
+#        sensitive. Defaults to info.
 # Outputs:
 #   The command name on stdout.
 # Returns:
 #   Always 0.
 core::logger_resolve() {
-  if declare -f log_debug >/dev/null 2>&1; then
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))" 1>&2
-  fi
+  core::_log_entry_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "${*:-}"))"
   local -r level="${1:-info}"
 
-  local logger_out
+  local log_entry_point_out
   if declare -f "log_${level}" >/dev/null 2>&1; then
-    logger_out="log_${level}"
+    log_entry_point_out="log_${level}"
+  elif [[ "${level}" == "sensitive" ]]; then
+    log_entry_point_out="core::_sensitive_noop"
   else
-    logger_out="core::_echo_stderr"
+    log_entry_point_out="core::_echo_stderr"
   fi
-  readonly logger_out
+  readonly log_entry_point_out
 
-  printf "%s" "${logger_out}"
+  printf "%s" "${log_entry_point_out}"
 }
 
 # core::print_stack_trace([message])
@@ -147,10 +175,11 @@ core::logger_resolve() {
 # Returns:
 #   Always 0.
 core::print_stack_trace() {
-  # TODO switch this to log_debug or another facility?
-  local logger
-  logger="$(core::logger_resolve error)"
-  readonly logger
+  core::_log_entry_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "${*:-}"))"
+
+  local _log_entry_error
+  _log_entry_error="$(core::logger_resolve error)"
+  readonly _log_entry_error
 
   # Only stderr is captured; fd 3 keeps stdout as it was, because
   # bash-logger's `color = auto` tests whether stdout is a terminal.
@@ -160,11 +189,12 @@ core::print_stack_trace() {
     report="$(
       {
         if (( $# > 0 )); then
-          "${logger}" "$*"
+          "${_log_entry_error}" "$*"
         fi
-        "${logger}" "Stack trace (most recent call first):"
+
+        "${_log_entry_error}" "Stack trace (most recent call first):"
         for (( i = 1; i < ${#FUNCNAME[@]}; i++ )); do
-          "${logger}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
+          "${_log_entry_error}" "  at ${FUNCNAME[${i}]} (${BASH_SOURCE[${i}]}:${BASH_LINENO[$((i - 1))]})"
         done
       } 2>&1 1>&3
     )"
@@ -176,6 +206,7 @@ core::print_stack_trace() {
   if [[ -n "${report}" ]]; then
     cat >&2 <<<"${report}"
   fi
+
   return 0
 }
 
@@ -195,7 +226,7 @@ core::print_stack_trace() {
 # core::logger_init (or `init_logger`) afterwards to initialize it.
 #
 # Globals:
-#   __BASHKIT_CORE_LOGGER_PATHS
+#   HOME   Optional. Read for the user install path.
 # Arguments:
 #   None.
 # Outputs:
@@ -205,15 +236,31 @@ core::print_stack_trace() {
 #   0 if the logger is loaded or was sourced; 1 if no copy was found;
 #   otherwise the status of sourcing logging.sh.
 core::_logger_source() {
-  declare -f log_debug >/dev/null 2>&1 && log_debug "Starting ${FUNCNAME[0]}()"
-
+  core::_log_entry_debug "Starting ${FUNCNAME[0]}()"
   declare -f init_logger >/dev/null 2>&1 && return 0
 
+  # In the order listed above. The first two are relative to this file
+  # (<bashkit>/local/lib/bashkit/core/); inside a function, BASH_SOURCE[0]
+  # is the file the function was defined in.
+  local -ra lib_paths=(
+    # bashkit's own submodule: <bashkit>/vendor/bash-logger/
+    "${BASH_SOURCE[0]%/*}/../../../../vendor/bash-logger/logging.sh"
+    # A copy vendored beside bashkit: <bashkit>/../bash-logger/ (e.g. forge's
+    # hack/vendor/bash-logger/ next to hack/vendor/bashkit/)
+    "${BASH_SOURCE[0]%/*}/../../../../../bash-logger/logging.sh"
+    "${HOME:-}/.local/lib/bash-logger/logging.sh"
+    "/usr/local/lib/bash-logger/logging.sh"
+    "/usr/lib/bash-logger/logging.sh"
+  )
+
   local candidate
-  for candidate in "${__BASHKIT_CORE_LOGGER_PATHS[@]}"; do
+  for candidate in "${lib_paths[@]}"; do
     if [[ -f "${candidate}" && -r "${candidate}" ]]; then
       # logging.sh assigns its globals without `declare`, so sourcing it
       # from inside this function still defines them globally.
+      #
+      # Which copy is found depends on where bash-logger is installed, so
+      # ShellCheck can't be pointed at one.
       #
       # shellcheck source=/dev/null
       . "${candidate}"
@@ -224,7 +271,7 @@ core::_logger_source() {
   # The logger isn't available, so core::fail can't be used here.
   {
     echo "${FUNCNAME[0]}(): bash-logger/logging.sh not found. Searched:"
-    printf '  %s\n' "${__BASHKIT_CORE_LOGGER_PATHS[@]}"
+    printf '  %s\n' "${lib_paths[@]}"
     echo "For the vendored copy, run: git submodule update --init --recursive"
   } >&2
   core::print_stack_trace
@@ -248,9 +295,7 @@ core::_logger_source() {
 #   0 if <name> is letters, digits, `.`, `_`, and `-` only, doesn't start
 #   with `.` or `-`, and holds no `..`; 1 otherwise.
 core::_logger_env_is_valid() {
-  if declare -f log_debug >/dev/null 2>&1; then
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))" 1>&2
-  fi
+  core::_log_entry_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "${*:-}"))"
 
   local -r name="${1:-}"
   local -r regex='^[A-Za-z0-9_][A-Za-z0-9._-]*$'
@@ -291,7 +336,6 @@ core::_logger_env_is_valid() {
 #                            `.`, `_`, and `-` only.
 #   BASHKIT_LOG_CONFIG_DIR   Optional. A directory searched before the
 #                            defaults.
-#   __BASHKIT_CORE_LOGGER_CONFIG_DIRS
 # Arguments:
 #   None.
 # Outputs:
@@ -302,52 +346,68 @@ core::_logger_env_is_valid() {
 #   1 if BASHKIT_LOG_CONFIG or BASHKIT_ENV names a config that can't be
 #   used; 0 otherwise.
 core::_logger_config_path() {
-  if declare -f log_debug >/dev/null 2>&1; then
-    log_debug "Starting ${FUNCNAME[0]}()" 1>&2
-  fi
+  core::_log_entry_debug "Starting ${FUNCNAME[0]}()"
 
   local -r explicit_config="${BASHKIT_LOG_CONFIG:-}"
 
   if [[ -n "${explicit_config}" ]]; then
-    [[ -r "${explicit_config}" ]] && { printf '%s\n' "${explicit_config}"; return 0; }
+    if [[ -r "${explicit_config}" ]]; then
+      printf '%s\n' "${explicit_config}"
+      return 0
+    fi
 
     core::print_stack_trace \
-      "${FUNCNAME[0]}(): BASHKIT_LOG_CONFIG is not a readable file:" \
-      "${explicit_config}"
+      "${FUNCNAME[0]}(): BASHKIT_LOG_CONFIG is not a readable file: ${explicit_config}"
     return 1
   fi
 
-  local -a dirs=()
+  # In the order listed above. The two after BASHKIT_LOG_CONFIG_DIR are
+  # relative to this file (<bashkit>/local/lib/bashkit/core/), so a checkout
+  # or vendored copy uses its own configs. Installed copies have neither and
+  # fall through to the user and system directories.
+  local -a config_dirs=()
   if [[ -n "${BASHKIT_LOG_CONFIG_DIR:-}" ]]; then
-    dirs+=("${BASHKIT_LOG_CONFIG_DIR}")
+    config_dirs+=("${BASHKIT_LOG_CONFIG_DIR}")
   fi
-  dirs+=("${__BASHKIT_CORE_LOGGER_CONFIG_DIRS[@]}")
-  readonly dirs
+  config_dirs+=(
+    # bashkit's own configs: <bashkit>/.bashkit/
+    "${BASH_SOURCE[0]%/*}/../../../../.bashkit"
+    # A consumer's configs two levels above bashkit: <bashkit>/../../etc/bashkit/
+    # (e.g. forge's hack/etc/bashkit/ for hack/vendor/bashkit/)
+    "${BASH_SOURCE[0]%/*}/../../../../../../etc/bashkit"
+    "${XDG_CONFIG_HOME:-${HOME:-}/.config}/bashkit"
+    "/usr/local/etc/bashkit"
+    "/etc/bashkit"
+  )
+  readonly config_dirs
 
   local -r _env="${BASHKIT_ENV:-}"
   local conf="logging.conf"
   if [[ -n "${_env}" ]]; then
     # So that BASHKIT_ENV can't point outside the config dirs.
     if ! core::_logger_env_is_valid "${_env}"; then
-      core::print_stack_trace \
-        "${FUNCNAME[0]}(): BASHKIT_ENV is not a valid environment name:" \
-        "${_env}"
+      core::print_stack_trace "${FUNCNAME[0]}(): BASHKIT_ENV is not a valid environment name: ${_env}"
       return 1
     fi
     conf="logging-${_env}.conf"
   fi
   readonly conf
 
-  local dir
-  for dir in "${dirs[@]}"; do
-    [[ -r "${dir}/${conf}" ]] && { printf '%s\n' "${dir}/${conf}"; return 0; }
+  local dir conf_file=""
+  for dir in "${config_dirs[@]}"; do
+    conf_file="${dir}/${conf}"
+    if [[ -r "${conf_file}" ]]; then
+      printf '%s\n' "${conf_file}"
+      return 0
+    fi
   done
 
   if [[ -n "${_env}" ]]; then
     {
       echo "${FUNCNAME[0]}(): BASHKIT_ENV=${_env}: ${conf} not found. Searched:"
-      printf '  %s\n' "${dirs[@]}"
+      printf '  %s\n' "${config_dirs[@]}"
     } >&2
+
     core::print_stack_trace
     return 1
   fi
@@ -386,9 +446,7 @@ core::_logger_config_path() {
 #   1 if BASHKIT_LOG_DIR is used and BASHKIT_ENV isn't a valid environment
 #   name; 0 otherwise.
 core::_logger_log_file_path() {
-  if declare -f log_debug >/dev/null 2>&1; then
-    log_debug "Starting ${FUNCNAME[0]}()" 1>&2
-  fi
+  core::_log_entry_debug "Starting ${FUNCNAME[0]}()"
 
   if [[ -n "${BASHKIT_LOG_FILE:-}" ]]; then
     printf '%s\n' "${BASHKIT_LOG_FILE}"
@@ -400,9 +458,7 @@ core::_logger_log_file_path() {
 
   local -r _env="${BASHKIT_ENV:-}"
   if [[ -n "${_env}" ]] && ! core::_logger_env_is_valid "${_env}"; then
-    core::print_stack_trace \
-      "${FUNCNAME[0]}(): BASHKIT_ENV is not a valid environment name:" \
-      "${_env}"
+    core::print_stack_trace "${FUNCNAME[0]}(): BASHKIT_ENV is not a valid environment name: ${_env}"
     return 1
   fi
 
@@ -464,9 +520,11 @@ core::_logger_log_file_path() {
 #   core::_logger_config_path, core::_logger_log_file_path,
 #   core::_logger_source, or `init_logger`.
 core::logger_init() {
-  declare -f init_logger >/dev/null 2>&1 && return 0
-
   # No entry log: the logger isn't loaded until core::_logger_source runs.
+  if declare -f init_logger >/dev/null 2>&1; then
+    core::_log_entry_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "${*:-}"))"
+    return 0
+  fi
 
   unset LOG_FILE USE_COLORS LOG_FORMAT \
     CURRENT_LOG_LEVEL LOG_STDERR_LEVEL \
@@ -483,9 +541,7 @@ core::logger_init() {
   core::bool_is_valid "${quiet}" || invalid+=" BASHKIT_QUIET=${quiet}"
   readonly invalid
   if [[ -n "${invalid}" ]]; then
-    core::print_stack_trace \
-      "${FUNCNAME[0]}(): expected true/false, yes/no, on/off, or 1/0:" \
-      "${invalid# }"
+    core::print_stack_trace "${FUNCNAME[0]}(): expected true/false, yes/no, on/off, or 1/0: ${invalid# }"
     return 1
   fi
 
@@ -520,7 +576,7 @@ core::logger_init() {
   readonly options
 
   init_logger "${options[@]}" || return
-  log_debug "${FUNCNAME[0]}(): init_logger ${options[*]}" 1>&2
+  log_debug "${FUNCNAME[0]}(): init_logger(${options[*]})" 1>&2
 }
 
 if [[ "${__BASHKIT_LIB_CORE_BOOLEAN_UTILS_SOURCED:-}" != "true" ]]; then

@@ -89,16 +89,13 @@ core::bool_is_valid() {
 # Returns:
 #   0 if <value> is true; 1 if it is false; 5 if it isn't a boolean.
 core::bool_is_true() {
-  if declare -f log_debug >/dev/null 2>&1; then
-    log_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))" 1>&2
-  fi
-
+  core::_log_entry_debug "Starting ${FUNCNAME[0]}($(IFS=' '; echo "$*"))"
   local -r bool="${1:-}"
 
   if ! core::bool_is_valid "${bool}"; then
-    local logger
-    logger="$(core::logger_resolve error)"
-    readonly logger
+    local _log_entry_error
+    _log_entry_error="$(core::logger_resolve error)"
+    readonly _log_entry_error
 
     # log_error prints only its first operand, so build a single string.
     local msg
@@ -116,7 +113,7 @@ core::bool_is_true() {
       "${__BASHKIT_CORE_BOOLEAN_FALSE_INT}"
     readonly msg
 
-    "${logger}" "${msg}"
+    "${_log_entry_error}" "${msg}"
     core::print_stack_trace
     return "${__BASHKIT_CORE_BOOLEAN_INVALID_STATUS}"
   fi

@@ -313,6 +313,11 @@ Leave a blank line after it. Three cases need something different:
 - In `local/bin/*` wrappers, wrap the line in
   `if declare -f log_debug >/dev/null 2>&1; then ... fi`.
   - Wrappers may run without the logger loaded.
+- In `core/logger-utils.sh` and `core/boolean-utils.sh`, which run before the
+  logger may be loaded, call `core::_log_entry_debug` with the same message
+  instead. It uses `log_debug` once the logger is loaded, and before that
+  writes to stderr when `BASHKIT_VERBOSE` or `BASHKIT_LEVEL` asks for debug
+  output.
 
 ### 4.3 Operand validation — *Addition*
 
