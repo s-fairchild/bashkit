@@ -53,8 +53,10 @@ ignition::validate() {
     case "${opt}" in
       s) podman_run_options+=("--secret=${OPTARG}"); ;;
       m)
-        core::is_option_arg_dup "${opt}" "${workdir_mount_src}" \
-          || { ignition::usage_ignition_validate; return 1; }
+        if ! core::is_option_arg_dup "${opt}" "${workdir_mount_src}"; then
+          ignition::usage_ignition_validate
+          return 1
+        fi
         readonly workdir_mount_src="${OPTARG}"
         ;;
       h) ignition::usage_ignition_validate; return 0; ;;

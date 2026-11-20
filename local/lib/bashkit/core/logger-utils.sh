@@ -18,6 +18,7 @@ readonly __BASHKIT_LIB_CORE_LOGGER_UTILS_SOURCED="true"
 # Message fragments for log lines, e.g. "-${OPTARG} ${..._OPTION_UNKNOWN}" in
 # a getopts error arm. They live here rather than in contract-utils.sh so
 # that every file that loads the logger has them.
+readonly __BASHKIT_CORE_ERROR_ARG_REQUIRED="[argument] is required"
 readonly __BASHKIT_CORE_ERROR_FILE_NOT_FOUND="file not found"
 readonly __BASHKIT_CORE_ERROR_DIR_NOT_FOUND="directory not found"
 readonly __BASHKIT_CORE_ERROR_FAILED_TO_CREATE_DIR="failed to create directory"

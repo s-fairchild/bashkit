@@ -693,20 +693,18 @@ another reason. Don't copy their patterns.
 
 | File | Deviation | Rule |
 | --- | --- | --- |
-| `podman/podman-{build,container,secret,volume}.sh` | Stale `# hack/lib/...` path header before the ShellCheck line | §1.2, §1.3 |
+| `podman/podman-{build,container,volume}.sh` | Stale `# hack/lib/...` path header before the ShellCheck line | §1.2, §1.3 |
 | `ignition/{butane,ignition-validate,serve}.sh` | Header comment comes before `# shellcheck shell=bash` | §1.2 |
 | `local/bin/envsubst` | `# shellcheck shell=bash` instead of a shebang | §1.2 |
 | `local/bin/{coreos-installer,envsubst}` | Source `contract-utils.sh`, which calls `core::logger_init` on load, so sourcing them still initializes the logger | §6.1 |
 | `podman/podman.sh` | Guard is `__LIB_PODMAN_SOURCED`, missing the `__BASHKIT_` prefix | §2.1 |
-| `core/bin-utils.sh`, `core/yq-utils.sh`, `k3s/token-utils.sh`, `kube/{kube,kubectl,kustomize}.sh` | No file header comment | §1.3 |
+| `core/bin-utils.sh`, `core/yq-utils.sh`, `k3s/token-utils.sh`, `kube/kube.sh` | No file header comment | §1.3 |
 | `core/yq-utils.sh` | No xtrace hook | §1.4 |
-| `podman/podman-secret.sh` | `${1?...}` operand checks | §4.3 |
-| `openssl/cert-utils.sh`, `podman/podman-secret.sh` | `local -r x="$(...)"` | Google (declare and assign separately) |
+| `openssl/cert-utils.sh` | `local -r x="$(...)"` | Google (declare and assign separately) |
 | `k3s/token-utils.sh` | `which`; function comment names don't match the functions (`k3s_gen_token*`) | §8, §4.1 |
 | Several files | Function comments missing `Globals:` or other sections | §4.1 |
 | `virsh/virsh-network.sh` | Dependency sourcing at the top of the file | §1.4 |
 | `virsh/virsh-network.sh` (`virsh::net_define`) | Writes the network XML to a `mktemp` file with no stated reason. `virsh net-define <(printf ...)` may work instead; test it before changing | §4.7 |
 | `core/sha512sum-utils.sh` | Function comments list arguments as `*) input - ...` instead of `$@` | §4.1 |
-| `core/contract-utils.sh` (`core::fail`, `core::require_nameref`, `core::is_valid_var_name`) | Missing or partial function comments; no entry logging | §4.1, §4.2 |
-| `kube/kubectl.sh` | `#######` banner comments; `log_error` + `return 1` and `core::fail ...; return` instead of `core::fail ... \|\| return` | §4.1, §4.5 |
-| `kube/kustomize.sh` | No function comments; unquoted `${cmd[@]}` behind `disable=SC2068` with no reason | §4.1, §7.1 |
+| `core/contract-utils.sh` (`core::fail`, `core::is_valid_var_name`) | No entry logging | §4.2 |
+| `kube/kubectl.sh` | `log_error` followed by a bare `core::fail` instead of `core::fail "<msg>"`; `core::fail ...; return` instead of `core::fail ... \|\| return` | §4.5 |

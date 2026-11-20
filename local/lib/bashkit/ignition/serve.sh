@@ -70,22 +70,25 @@ ignition::serve() {
   while getopts ':i:s:d:e:hc:k:' opt; do
     case "${opt}" in
       i)
-        core::is_option_arg_dup "${opt}" "${ignition}" \
-          || { ignition::usage_serve; return 1; }
-        readonly ignition="${OPTARG}"
+        if ! core::is_option_arg_dup "${opt}" "${ignition}"; then
+          core::fail ignition::usage_serve || return
+        fi
+        ignition="${OPTARG}"
         ;;
       s) secrets+=("${OPTARG}"); ;;
       d) dropins+=("${OPTARG}"); ;;
       e) env_prefixes+=("${OPTARG}"); ;;
       c)
-        core::is_option_arg_dup "${opt}" "${ssl_cert}" \
-          || { ignition::usage_serve; return 1; }
-        readonly ssl_cert="${OPTARG}"
+        if ! core::is_option_arg_dup "${opt}" "${ssl_cert}"; then
+          core::fail ignition::usage_serve || return
+        fi
+        ssl_cert="${OPTARG}"
         ;;
       k)
-        core::is_option_arg_dup "${opt}" "${ssl_key}" \
-          || { ignition::usage_serve; return 1; }
-        readonly ssl_key="${OPTARG}"
+        if ! core::is_option_arg_dup "${opt}" "${ssl_key}"; then
+          core::fail ignition::usage_serve || return
+        fi
+        ssl_key="${OPTARG}"
         ;;
       h) ignition::usage_serve; return 0; ;;
       :) log_error "-${OPTARG} ${__BASHKIT_CORE_ERROR_OPTION_OPERAND_MISSING}"; ignition::usage_serve; return 1; ;;
@@ -93,6 +96,8 @@ ignition::serve() {
     esac
   done
   shift $((OPTIND - 1))
+  readonly ignition secrets dropins env_prefixes ssl_cert ssl_key
+  log_debug "$(declare -p ignition secrets dropins env_prefixes ssl_cert ssl_key)"
 
   if [[ -z "${ssl_cert}" ]]; then
     ignition::usage_serve
@@ -107,7 +112,7 @@ ignition::serve() {
   fi
 
   if (( ! ${#secrets[@]} )); then
-    log_warn "No -s option(s) provided. No secrets will be mounted."
+    log_warn "${FUNCNAME[0]}([-s secret]) option(s) not provided. No secrets will be mounted."
   fi
 
   log_sensitive "$(declare -p ignition secrets dropins env_prefixes ssl_cert ssl_key)"
@@ -143,8 +148,7 @@ ignition::serve() {
       podman_run_options+=("--volume=./${item}:${nginx_dropin_target}/$(basename "${item}"):ro")
     else
       ignition::usage_serve
-      log_error "dropin file not found: ${item}"
-      return 1
+      core::fail "dropin file not found: ${item}" || return
     fi
   done
 
@@ -153,8 +157,7 @@ ignition::serve() {
       podman_run_options+=("--secret=${item},target=${nginx_serve_root}/secrets/${item}")
     else
       ignition::usage_serve
-      log_error "podman secret not found: ${item}"
-      return 1
+      core::fail "podman secret not found: ${item}" || return
     fi
   done
 
@@ -162,6 +165,7 @@ ignition::serve() {
     # Strip a trailing '*' so an already-globbed prefix does not become '**'.
     podman_run_options+=("--env=${item%\*}*")
   done
+  readonly podman_run_options
   log_sensitive "$(declare -p podman_run_options)"
 
   # https://images.redhat.com/?name=nginx&version=latest
@@ -171,8 +175,8 @@ ignition::serve() {
     "${podman_run_options[@]}" \
     "${image}" \
     "$@"; then
-    log_error "podman run command failed."
-    return 1
+
+    core::fail "podman run command failed." || return
   fi
 }
 
