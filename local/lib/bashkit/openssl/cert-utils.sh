@@ -33,9 +33,8 @@ openssl::usage_self_signed_cert_gen() {
 Usage: openssl::self_signed_cert_gen [-d days] [-c country] [-s state_or_province] [-l locality] [-o organization] [-n common_name] [-a san_value]... [-h] < private_key
 
 Generates a self-signed certificate for the ECC private key read from stdin.
-The Subject Alternative Names always include "DNS:<common_name>" and
-"DNS:*.<common_name>" (derived from -n); -a appends additional SAN values
-to that list.
+With -n, the Subject Alternative Names include "DNS:<common_name>" and
+"DNS:*.<common_name>"; -a appends additional SAN values to that list.
 
 Options:
   -d days               Certificate expiration, in days. (default: 1825)
@@ -56,9 +55,9 @@ USAGE
 #
 # Generates a self-signed certificate for the ECC private key read from
 # stdin. The certificate subject is assembled from -c/-s/-l/-o/-n. The
-# Subject Alternative Names always include "DNS:<common_name>" and
-# "DNS:*.<common_name>" (derived from -n); -a appends additional SAN
-# values to that list.
+# Subject Alternative Names include "DNS:<common_name>" and
+# "DNS:*.<common_name>" when -n is given; -a appends additional SAN values to
+# that list.
 #
 # Globals:
 #   ERROR_OPTION_ARG_REQUIRED, ERROR_OPTION_UNKNOWN
@@ -93,31 +92,31 @@ openssl::self_signed_cert_gen() {
   while getopts ':d:c:s:l:o:n:a:h' opt; do
     case "${opt}" in
       d)
-        readonly days="${OPTARG}"
+        days="${OPTARG}"
         log_debug "Updating Expiration Days to: ${days}"
         ;;
       c)
-        readonly country="${OPTARG}"
+        country="${OPTARG}"
         log_debug "$(declare -p country)"
         ;;
       s)
-        readonly state_or_province="${OPTARG}"
+        state_or_province="${OPTARG}"
         log_debug "$(declare -p state_or_province)"
         ;;
       l)
-        readonly locality="${OPTARG}"
+        locality="${OPTARG}"
         log_debug "$(declare -p locality)"
         ;;
       o)
-        readonly organization="${OPTARG}"
+        organization="${OPTARG}"
         log_debug "$(declare -p organization)"
         ;;
       n)
-        readonly common_name="${OPTARG}"
+        common_name="${OPTARG}"
         log_debug "$(declare -p common_name)"
         ;;
       a)
-        readonly san_values+=("${OPTARG}")
+        san_values+=("${OPTARG}")
         log_sensitive "$(declare -p san_values)"
         ;;
       h) openssl::usage_self_signed_cert_gen; return 0; ;;
@@ -133,9 +132,15 @@ openssl::self_signed_cert_gen() {
     esac
   done
   shift $((OPTIND - 1))
+  # Before the readonly below, which would make this append fail. Without -n
+  # there is no name to add: "DNS:" alone is an invalid SAN and openssl rejects it.
+  if [[ -n "${common_name}" ]]; then
+    san_values+=("DNS:${common_name}" "DNS:*.${common_name}")
+  fi
+  readonly days country state_or_province locality organization common_name \
+    san_values
 
   local -r subject="/C=${country}/ST=${state_or_province}/L=${locality}/O=${organization}/CN=${common_name}"
-  san_values+=("DNS:${common_name}" "DNS:*.${common_name}")
   local -r addext="subjectAltName=$(IFS=','; printf '%s' "${san_values[*]}")"
 
   log_info "Generating x509 self signed certificate."
