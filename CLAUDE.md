@@ -56,7 +56,7 @@ local/
     openssl/            # openssl::* — private key / self-signed cert generation
     os/                 # os::*    — bk-bootstrap (strict shell options; import / os::import,
                         #            os::import_one, os::source_http, os::throw, os::print_stack_trace)
-    podman/             # podman::* — container, secret, volume, build helpers
+    podman/             # podman::* — container, secret, volume helpers
     virsh/              # virsh::* — domain, network, pool/volume wrappers and *_is_* predicates
 ```
 

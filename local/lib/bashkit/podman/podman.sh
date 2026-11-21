@@ -13,7 +13,3 @@ import podman/podman-secret.sh
 # shellcheck source=podman-volume.sh
 . /dev/null
 import podman/podman-volume.sh
-
-# shellcheck source=podman-build.sh
-. /dev/null
-import podman/podman-build.sh
