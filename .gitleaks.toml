@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "sensitive-file-extension"
+description = "Key/cert/keyfile committed by path"
+path = '''(?i)\.(p12|pfx|jks|keystore|key|keyfile(\.gz)?|kdbx)$'''

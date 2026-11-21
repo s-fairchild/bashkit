@@ -13,3 +13,19 @@ pre-commit:
       exclude:
         - vendor/*
       run: shellcheck "{staged_files}"
+
+    # Scans staged changes with .gitleaks.toml. The checkout and git's common
+    # dir are mounted at their own paths: in a `git worktree`, .git is a file
+    # pointing outside the checkout, and with only the checkout mounted
+    # gitleaks scans nothing and reports no leaks.
+    gitleaks:
+      run: |
+        set -- -v "${PWD}:${PWD}:O"
+        common="$(git rev-parse --path-format=absolute --git-common-dir)"
+        case "${common}" in
+          "${PWD}"/*) ;;
+          *) set -- "$@" -v "${common}:${common}:O" ;;
+        esac
+        podman run --rm --network=none "$@" \
+          ghcr.io/gitleaks/gitleaks:latest \
+          git --pre-commit --staged --redact --no-banner -v "${PWD}"

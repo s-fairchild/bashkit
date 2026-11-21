@@ -27,6 +27,15 @@ test: ## Run the behavior tests in test/ (the package tests need vendor/bash-log
 
 .PHONY: test
 
+gitleaks-report:
+	podman run \
+		--rm \
+		-v $${PWD}:/repo:O \
+		ghcr.io/gitleaks/gitleaks:latest \
+			git \
+			/repo \
+			-v
+
 install: ## Install local/bin and local/lib/bashkit into ~/.local, and .bashkit/ configs into ~/.config/bashkit
 	mkdir -p ~/.local/bin
 	install -v -t ~/.local/bin/ local/bin/*
