@@ -14,18 +14,32 @@ pre-commit:
         - vendor/*
       run: shellcheck "{staged_files}"
 
-    # Scans staged changes with .gitleaks.toml. The checkout and git's common
-    # dir are mounted at their own paths: in a `git worktree`, .git is a file
-    # pointing outside the checkout, and with only the checkout mounted
-    # gitleaks scans nothing and reports no leaks.
+    # Scans staged changes with .gitleaks.toml. In a `git worktree` or a
+    # submodule, .git is a file pointing outside the checkout, so the checkout
+    # and git's common dir are both mounted, at the physical paths git
+    # reports. Not ${PWD}: it keeps any symlink the commit was made through,
+    # and a submodule's .git file and core.worktree are relative paths that
+    # would then resolve to nothing mounted. `git commit -a` and
+    # `git commit <paths>` stage into a temporary index that git names in
+    # GIT_INDEX_FILE; it's passed in too, or gitleaks scans the old index.
+    # gitleaks logs git errors but still exits 0 with "no leaks found", so the
+    # container first checks that git can find the repo and the index.
     gitleaks:
       run: |
-        set -- -v "${PWD}:${PWD}:O"
+        top="$(git rev-parse --show-toplevel)"
         common="$(git rev-parse --path-format=absolute --git-common-dir)"
+        index="$(git rev-parse --path-format=absolute --git-path index)"
+        set -- -v "${top}:${top}:O"
         case "${common}" in
-          "${PWD}"/*) ;;
+          "${top}"/*) ;;
           *) set -- "$@" -v "${common}:${common}:O" ;;
         esac
-        podman run --rm --network=none "$@" \
-          ghcr.io/gitleaks/gitleaks:latest \
-          git --pre-commit --staged --redact --no-banner -v "${PWD}"
+        podman run --rm --network=none "$@" -e GIT_INDEX_FILE="${index}" \
+          --entrypoint sh ghcr.io/gitleaks/gitleaks:latest -c '
+            git -C "$1" rev-parse --git-dir >/dev/null || exit
+            if [ ! -f "${GIT_INDEX_FILE}" ]; then
+              echo "gitleaks: index ${GIT_INDEX_FILE} is not mounted" >&2
+              exit 1
+            fi
+            exec gitleaks git --pre-commit --staged --redact --no-banner -v "$1"
+          ' sh "${top}"

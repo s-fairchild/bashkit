@@ -27,14 +27,21 @@ test: ## Run the behavior tests in test/ (the package tests need vendor/bash-log
 
 .PHONY: test
 
-gitleaks-report:
-	podman run \
-		--rm \
-		-v $${PWD}:/repo:O \
-		ghcr.io/gitleaks/gitleaks:latest \
-			git \
-			/repo \
-			-v
+# Mounts the checkout and git's common dir the way the gitleaks hook in
+# .lefthook.yaml does, so the scan works in a worktree or a submodule; the
+# comment there explains why.
+gitleaks-report: ## Scan the full git history for secrets with gitleaks (podman)
+	top="$$(git rev-parse --show-toplevel)" || exit
+	common="$$(git rev-parse --path-format=absolute --git-common-dir)" || exit
+	mounts=(-v "$${top}:$${top}:O")
+	[[ "$${common}" == "$${top}"/* ]] || mounts+=(-v "$${common}:$${common}:O")
+	podman run --rm "$${mounts[@]}" --entrypoint sh \
+		ghcr.io/gitleaks/gitleaks:latest -c '
+			git -C "$$1" rev-parse --git-dir >/dev/null || exit
+			exec gitleaks git -v "$$1"
+		' sh "$${top}"
+
+.PHONY: gitleaks-report
 
 install: ## Install local/bin and local/lib/bashkit into ~/.local, and .bashkit/ configs into ~/.config/bashkit
 	mkdir -p ~/.local/bin
